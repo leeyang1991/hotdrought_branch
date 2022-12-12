@@ -4,9 +4,7 @@ from __init__ import *
 import climate_indices
 from climate_indices import compute
 from climate_indices import indices
-global_land_tif = join(this_root,'conf/land.tif')
-global_start_year = 1982
-global_end_year = 2015
+land_tif = join(this_root,'conf/land.tif')
 
 class Meta_information:
 
@@ -16,7 +14,7 @@ class Meta_information:
     def path(self,year_range='1982-2015'):
         vars_info_dic = {
             'SPEI': {
-            'path':join(data_root, '/SPEI/per_pix_clean',year_range),
+            'path':join(data_root, 'SPEI/per_pix_clean',year_range),
             'path_type':'multi-files',
             },
             'CCI-SM': {
@@ -28,7 +26,7 @@ class Meta_information:
                 'path_type': 'multi-files',
             },
             'NDVI': {
-                'path': join(data_root, 'CRU_precip/per_pix_spi',year_range),
+                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean_anomaly_detrend',year_range),
                 'path_type': 'dir',
             },
             'Temperature': {
