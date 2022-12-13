@@ -139,6 +139,95 @@ class Growing_season:
         gs_dict = T.df_to_spatial_dic(df,'gs')
         return gs_dict
 
+class Dataframe_func:
+
+    def __init__(self,df):
+        print('add lon lat')
+        df = self.add_lon_lat(df)
+        print('add landcover')
+        df = self.add_GLC_landcover_data_to_df(df)
+        print('add NDVI mask')
+        df = self.add_NDVI_mask(df)
+        print('add Aridity Index')
+        df = self.add_AI_to_df(df)
+        print('add ELI')
+        df = self.add_ELI_to_df(df)
+        df = self.clean_df(df)
+        self.df = df
+
+    def clean_df(self,df):
+
+        # df = df[df['lat']>=30]
+        # df = df[df['landcover_GLC'] != 'Crop']
+        df = df[df['NDVI_MASK'] == 1]
+
+        return df
+    def add_GLC_landcover_data_to_df(self, df):
+        f = join(data_root,'GLC2000/reclass_lc_dic2.npy')
+        val_dic=T.load_npy(f)
+        val_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            if not pix in val_dic:
+                val_list.append(np.nan)
+                continue
+            vals = val_dic[pix]
+            val_list.append(vals)
+        df['landcover_GLC'] = val_list
+        return df
+
+    def add_NDVI_mask(self,df):
+        # f =rf'C:/Users/pcadmin/Desktop/Data/Base_data/NDVI_mask.tif'
+        f = join(data_root, 'GIMMS_NDVI/NDVI_mask.tif')
+        print(f)
+
+        array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(f)
+        array = np.array(array, dtype=float)
+        val_dic = DIC_and_TIF().spatial_arr_to_dic(array)
+        f_name = 'NDVI_MASK'
+        print(f_name)
+        # exit()
+        val_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+
+            pix = row['pix']
+            if not pix in val_dic:
+                val_list.append(np.nan)
+                continue
+            vals = val_dic[pix]
+            if vals < -99:
+                val_list.append(np.nan)
+                continue
+            val_list.append(vals)
+        df[f_name] = val_list
+        return df
+
+    def add_AI_to_df(self, df):
+        f = join(data_root, 'Aridity_Index/aridity_index.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'aridity_index')
+        return df
+
+    def drop_n_std(self, vals, n=1):
+        vals = np.array(vals)
+        mean = np.nanmean(vals)
+        std = np.nanstd(vals)
+        up = mean + n * std
+        down = mean - n * std
+        vals[vals > up] = np.nan
+        vals[vals < down] = np.nan
+        return vals
+
+    def add_lon_lat(self,df):
+        df = T.add_lon_lat_to_df(df, DIC_and_TIF())
+        return df
+
+    def add_ELI_to_df(self,df):
+        f = join(Water_energy_limited_area().this_class_tif, 'ELI/ELI_Temp_r.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI')
+        return df
+
 class Max_Scale_and_Lag_correlation_SPEI:
 
     def __init__(self):
@@ -355,13 +444,10 @@ class Pick_Drought_Events:
             T.mk_class_dir('Pick_Drought_Events',result_root_this_script,mode=2)
 
     def run(self):
-        # 1 pick events in annual scale
-        # self.pick_normal_drought_events()
+        self.pick_normal_drought_events()
         self.pick_normal_hot_events()
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
-        # self.check_compound_drought()
-        # self.check_sum()
         pass
 
     def pick_normal_hot_events(self):
@@ -400,8 +486,8 @@ class Pick_Drought_Events:
                         spi_drought_year_spare.append(dr)
                 hot_dic[pix] = hot_drought_year
                 normal_dic[pix] = spi_drought_year_spare
-            hot_outf = join(outdir,f'hot_drought_{scale}.npy')
-            normal_outf = join(outdir,f'normal_drought_{scale}.npy')
+            hot_outf = join(outdir,f'hot-drought_{scale}.npy')
+            normal_outf = join(outdir,f'normal-drought_{scale}.npy')
             T.save_npy(hot_dic,hot_outf)
             T.save_npy(normal_dic,normal_outf)
 
@@ -416,9 +502,6 @@ class Pick_Drought_Events:
             events_dic = {}
             params_list = []
             for pix in tqdm(SPI_dict,desc=f'{scale}'):
-                r,c = pix
-                if r < 60:
-                    continue
                 vals = SPI_dict[pix]
                 vals = np.array(vals)
                 params = (vals,threshold)
@@ -435,64 +518,6 @@ class Pick_Drought_Events:
                 events_dic[pix] = drought_year_list
             outf = join(outdir,'{}'.format(scale))
             T.save_npy(events_dic,outf)
-
-    def check_sum(self):
-        f = join(self.this_class_arr, 'picked_events/spi12/1982-2015/drought_events_annual.npy')
-        T.shasum(f)
-        f_hot = join(self.this_class_arr, 'picked_events/spi_and_hot_12/1982-2015/hot_drought_12.npy')
-        f_normal = join(self.this_class_arr, 'picked_events/spi_and_hot_12/1982-2015/spi_drought_12.npy')
-        f_single = join(self.this_class_arr, 'pick_single_events/1982-2015/single_events.df')
-        T.shasum(f_hot)
-        T.shasum(f_normal)
-        T.shasum(f_single)
-
-
-    def kernel_pick_repeat_events(self,events,year_num):
-        # year_num = 16
-        # events = [2,3,5,8,10]
-        # events = [3,4,5,6]
-        events_mark = []
-        for i in range(year_num):
-            if i in events:
-                events_mark.append(1)
-            else:
-                events_mark.append(0)
-        window = 4
-        # print(events)
-        events_list = []
-        for i in range(len(events_mark)):
-            select = events_mark[i:i+window]
-            if select[0] == 0:
-                continue
-            if select[-1] == 0 and select.count(1) == 3:
-                continue
-            build_list = list(range(i,i+window))
-            select_index = []
-            for j in build_list:
-                if j in events:
-                    select_index.append(j)
-            if not select_index[-1] - select_index[0] >= 2:
-                continue
-            # 前两年不能有干旱事件
-            if select_index[0] - 1 in events:
-                continue
-            if select_index[0] - 2 in events:
-                continue
-            # 后两年不能有干旱事件
-            if select_index[-1] + 1 in events:
-                continue
-            if select_index[-1] + 2 in events:
-                continue
-            if len(select_index) == 4:
-                continue
-            if select_index[0] - 2 < 0:
-                continue
-            if select_index[-1] + 2 >= year_num:
-                continue
-            events_list.append(select_index)
-        # print(events_list)
-        # exit()
-        return events_list
 
 
     def kernel_find_drought_period(self, params):
@@ -663,40 +688,256 @@ class Pick_Drought_Events:
         return single_events_list
 
 
-    def check_compound_drought(self):
-        dff = '/Volumes/NVME2T/hotcold_drought/results/Main_flow_folder/remote_sensing/arr/Pick_drought_events_annual_temp_zscore/pick_single_events/1982-2015/single_events.df'
-        df = T.load_df(dff)
-        df = Dataframe_func(df).df
-        outdir = join(self.this_class_tif,'check_compound_drought')
-        T.mk_dir(outdir,force=True)
-        T.open_path_and_file(outdir)
-        drought_type_list = ['hot_drought','dry_drought']
-        for drt in drought_type_list:
-            dict_i = T.df_to_spatial_dic(df, drt)
-            spatial_dict = {}
-            for pix in dict_i:
-                events = dict_i[pix]
-                if type(events) == float:
-                    continue
-                events_num = len(events)
-                spatial_dict[pix] = events_num
-            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
-            # DIC_and_TIF().arr_to_tif(arr, join(outdir, f'{drt}.tif'))
-            plt.figure()
-            plt.imshow(arr, vmin=1, vmax=6, cmap='jet')
-            plt.colorbar()
-            DIC_and_TIF().plot_back_ground_arr(global_land_tif)
-            plt.title(drt)
-        plt.show()
+class Resistance_Resilience:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Resistance_Resilience', result_root_this_script, mode=2)
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        self.dff = join(self.this_class_arr, 'dataframe/dataframe.df')
+        pass
+
+    def run(self):
+        # self.gen_dataframe()
+        df = self.__gen_df_init()
+        # df = self.add_max_lag_and_scale(df)
+        # df = self.cal_rt(df)
+        df = self.cal_rs(df)
+        # self.rt_tif(df)
+
+        # df = Dataframe_func(df).df
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
 
         pass
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+    def gen_dataframe(self):
+        drought_envents_df = self.__get_drought_events()
+        drought_envents_df_dict = T.df_to_dic(drought_envents_df, 'pix')
+        pix_list = []
+        drought_type_with_scale_list = []
+        drought_type_list = []
+        drought_year_list = []
+        for pix in tqdm(drought_envents_df_dict):
+            dict_i = drought_envents_df_dict[pix]
+            # print(dict_i)
+            for drought_type_with_scale in dict_i:
+                if drought_type_with_scale == 'pix':
+                    continue
+                drought_year_list_i = dict_i[drought_type_with_scale]
+                if type(drought_year_list_i) == float:
+                    continue
+                drought_type = drought_type_with_scale.split('_')[0]
+                for year in drought_year_list_i:
+                    pix_list.append(pix)
+                    drought_type_with_scale_list.append(drought_type_with_scale)
+                    drought_type_list.append(drought_type)
+                    drought_year_list.append(year)
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['drought_type'] = drought_type_list
+        df['drought_type_with_scale'] = drought_type_with_scale_list
+        df['drought_year'] = drought_year_list
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def add_max_lag_and_scale(self, df):
+        max_scale_and_lag_df = self.__get_max_scale_and_lag()
+        max_lag_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_lag')
+        max_scale_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_scale')
+        print('adding max_scale...')
+        df = T.add_spatial_dic_to_df(df, max_scale_spatial_dict, 'max_scale')
+        # filter df with max scale
+        selected_index = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            max_scale = row['max_scale']
+            if np.isnan(max_scale):
+                continue
+            drought_type = row['drought_type_with_scale']
+            max_scale = int(max_scale)
+            if f'{max_scale:02d}' in drought_type:
+                selected_index.append(i)
+        df = df.iloc[selected_index]
+
+        print('adding max_lag...')
+        df = T.add_spatial_dic_to_df(df, max_lag_spatial_dict, 'max_lag')
+
+        return df
+
+    def cal_rt(self,df):
+
+        NDVI_spatial_dict = GLobal_var().load_data('NDVI_origin')
+        gs_dict = Growing_season().longterm_growing_season()
+        year_list = list(range(global_start_year,global_end_year+1))
+        rt_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            if not pix in gs_dict:
+                rt_list.append(np.nan)
+                continue
+            if not pix in NDVI_spatial_dict:
+                rt_list.append(np.nan)
+                continue
+            lag = row['max_lag']
+            drought_year = row['drought_year']
+            gs = gs_dict[pix]
+            gs = list(gs)
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI)
+            NDVI[NDVI < 0] = np.nan
+            NDVI_annual = T.monthly_vals_to_annual_val(NDVI,gs)
+            NDVI_annual = T.detrend_vals(NDVI_annual)
+            NDVI_annual_dict = dict(zip(year_list,NDVI_annual))
+            lagged_drought_year = drought_year + lag
+            lagged_drought_year = int(lagged_drought_year)
+            if lagged_drought_year > global_end_year:
+                rt_list.append(np.nan)
+                continue
+            NDVI_lagged_drought_year = NDVI_annual_dict[lagged_drought_year]
+            long_term_mean = np.nanmean(NDVI_annual)
+            rt = NDVI_lagged_drought_year / long_term_mean
+            rt_list.append(rt)
+        df['rt'] = rt_list
+        return df
+
+    def cal_rs(self,df):
+        post_n_list = [1,2,3,4]
+        # post_n_list = [4]
+        NDVI_spatial_dict = GLobal_var().load_data('NDVI_origin')
+        gs_dict = Growing_season().longterm_growing_season()
+        year_list = list(range(global_start_year,global_end_year+1))
+        for post_year in post_n_list:
+            rs_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=f'cal_rs post_year:{post_year}'):
+                pix = row['pix']
+                if not pix in gs_dict:
+                    rs_list.append(np.nan)
+                    continue
+                if not pix in NDVI_spatial_dict:
+                    rs_list.append(np.nan)
+                    continue
+                lag = row['max_lag']
+                drought_year = row['drought_year']
+                gs = gs_dict[pix]
+                gs = list(gs)
+                NDVI = NDVI_spatial_dict[pix]
+                NDVI = np.array(NDVI)
+                NDVI[NDVI < 0] = np.nan
+                NDVI_annual = T.monthly_vals_to_annual_val(NDVI,gs)
+                NDVI_annual = T.detrend_vals(NDVI_annual)
+                NDVI_annual_dict = dict(zip(year_list,NDVI_annual))
+                lagged_drought_year = drought_year + lag
+                lagged_drought_year = int(lagged_drought_year)
+                if lagged_drought_year > global_end_year:
+                    rs_list.append(np.nan)
+                    continue
+                post_year_list = list(range(lagged_drought_year+1,lagged_drought_year+1+post_year))
+                post_year_NDVI = []
+                for post_year_i in post_year_list:
+                    if post_year_i > global_end_year:
+                        post_year_NDVI = []
+                        break
+                    post_year_NDVI.append(NDVI_annual_dict[post_year_i])
+                if len(post_year_NDVI) == 0:
+                    rs_list.append(np.nan)
+                    continue
+                post_year_NDVI_mean = np.nanmean(post_year_NDVI)
+                long_term_mean = np.nanmean(NDVI_annual)
+                rs = post_year_NDVI_mean / long_term_mean
+                rs_list.append(rs)
+            df[f'rs_{post_year}'] = rs_list
+        return df
+
+    def rt_tif(self,df):
+        NDVI_dict = GLobal_var().load_data('NDVI_origin')
+        outdir = join(self.this_class_tif, 'rt')
+        T.mk_dir(outdir)
+        drought_type_list = T.get_df_unique_val_list(df, 'drought_type')
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            spatial_dict = {}
+            df_group_dict = T.df_groupby(df_drt, 'pix')
+            for pix in tqdm(df_group_dict):
+                df_i = df_group_dict[pix]
+                rt = df_i['rt'].values
+                rt_mean = np.nanmean(rt)
+                if rt_mean < 0:
+                    NDVI = NDVI_dict[pix]
+                    T.print_head_n(df_i, 10)
+                    plt.plot(NDVI)
+                    plt.show()
+                spatial_dict[pix] = rt_mean
+
+            outf = join(outdir, f'{drt}.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+
+    def __get_drought_events(self):
+        outdir = join(self.this_class_arr, 'drought_events')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'drought_events.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        drought_events_dir = join(Pick_Drought_Events().this_class_arr,'normal_hot_events')
+        spatial_dict_all = {}
+        for f in T.listdir(drought_events_dir):
+            fpath = join(drought_events_dir,f)
+            var_i = f.split('.')[0]
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_all[var_i] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+        return df
+
+
+        pass
+
+    def __get_max_scale_and_lag(self):
+        outdir = join(self.this_class_arr,'max_scale_and_lag')
+        T.mk_dir(outdir)
+        outf = join(outdir,'max_scale_and_lag.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        max_scale_and_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,'NDVI_SPI_max_scale')
+        max_lag_f = join(max_scale_and_lag_fdir,'max_lag.tif')
+        max_scale_f = join(max_scale_and_lag_fdir,'max_scale.tif')
+
+        max_lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_lag_f)
+        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
+
+        dict_all = {'max_lag':max_lag_spatial_dict,'max_scale':max_scale_spatial_dict}
+
+        df = T.spatial_dics_to_df(dict_all)
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+        return df
+
 
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
+    Resistance_Resilience().run()
     pass
 
 

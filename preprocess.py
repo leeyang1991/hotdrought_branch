@@ -29,6 +29,10 @@ class Meta_information:
                 'path': join(data_root, 'GIMMS_NDVI/per_pix_clean_anomaly_detrend',year_range),
                 'path_type': 'dir',
             },
+            'NDVI_origin': {
+                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean', year_range),
+                'path_type': 'dir',
+            },
             'Temperature': {
                 'path': join(data_root, f'CRU_tmp/detrend/{year_range}/detrend.npy'),
                 'path_type': 'file',
@@ -244,70 +248,89 @@ class GLC2000:
         pass
 
     def run(self):
-        # self.resample()
-        self.lc_spatial_dic()
-        # self.gen_spatial_dic()
-        # self.check_pix()
+        self.resample()
+        # self.unify()
+        self.reclass_lc()
+        self.reclass_tif()
+        self.lc_dict_with_number()
+        self.show_reclass_lc()
+        self.show_lc_dict_with_number()
         pass
-
 
     def resample(self):
-        tif = join(self.datadir,'glc2000_v1_1_resample_7200_3600.tif')
-        outtif = join(self.datadir,'glc2000_v1_1_resample_720_360.tif')
 
-        ToRaster().resample_reproj(tif,outtif,0.5)
+        tif = join(self.datadir,'glc2000_v1_1.tif')
+        outtif = join(self.datadir,'glc2000_v1_1_05_deg.tif')
+        ToRaster().resample_reproj(tif,outtif,res=0.5)
 
-    def lc_spatial_dic(self):
-        tif = join(self.datadir,'glc2000_v1_1_resample_720_360.tif')
-        outf = join(self.datadir,'lc_dic_reclass.npy')
-        dic = DIC_and_TIF().spatial_tif_to_dic(tif)
-        lc_reclass_spatial_dic = {}
-        evergreen = [1,4]
-        deciduous = [2,3,5]
-        for pix in tqdm(dic):
-            val = dic[pix]
-            if val in evergreen:
-                cls = 'Evergreen'
-            elif val in deciduous:
-                cls = 'Deciduous'
-            elif 11 <= val <= 12:
-                cls = 'Shrubs'
-            elif 13 <= val <= 14:
-                cls = 'Grass'
-            elif 16<= val <= 18:
-                cls = 'Crop'
-            else:
+    def unify(self):
+        tif = join(self.datadir,'glc2000_v1_1_05_deg.tif')
+        outtif = join(self.datadir,'glc2000_v1_1_05_deg_unify.tif')
+        DIC_and_TIF().unify_raster(tif,outtif)
+
+    def reclass_lc(self):
+        outf = join(self.datadir,'reclass_lc_dic2')
+        excel = join(self.datadir,'glc2000_Global_Legend.xls')
+        tif = join(self.datadir,'glc2000_v1_1_05_deg_unify.tif')
+        legend_df = pd.read_excel(excel)
+        val_dic = T.df_to_dic(legend_df,'VALUE')
+        spatial_dic = DIC_and_TIF().spatial_tif_to_dic(tif)
+        reclass_dic = {}
+        for pix in spatial_dic:
+            val = spatial_dic[pix]
+            if np.isnan(val):
                 continue
-            lc_reclass_spatial_dic[pix] = cls
-        T.save_npy(lc_reclass_spatial_dic,outf)
+            val = int(val)
+            # lc = val_dic[val]['reclass_1']
+            lc = val_dic[val]['reclass_2']
+            if type(lc) == float:
+                continue
+            reclass_dic[pix] = lc
+        T.save_npy(reclass_dic,outf)
 
+    def lc_dict_with_number(self):
+        outf = join(self.datadir,'lc_dict_with_number.npy')
+        tif = join(self.datadir,'glc2000_v1_1_05_deg_unify.tif')
+        spatial_dic = DIC_and_TIF().spatial_tif_to_dic(tif)
+        T.save_npy(spatial_dic,outf)
 
-        pass
+    def show_reclass_lc(self):
+        lc_dict_f = join(self.datadir,'reclass_lc_dic.npy')
+        lc_dict = T.load_npy(lc_dict_f)
+        lc_list = []
+        for pix in lc_dict:
+            lc = lc_dict[pix]
+            lc_list.append(lc)
+        lc_list = list(set(lc_list))
+        print(lc_list)
 
+    def show_lc_dict_with_number(self):
+        lc_dict_f = join(self.datadir,'lc_dict_with_number.npy')
+        lc_dict = T.load_npy(lc_dict_f)
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(lc_dict)
+        arr[np.isnan(arr)]=20
+        dict_new = DIC_and_TIF().spatial_arr_to_dic(arr)
+        T.save_npy(dict_new,lc_dict_f)
 
-    def gen_spatial_dic(self):
-        # outf = data_root + 'landcover/gen_spatial_dic'
-        spatial_dic = {}
-        for val in tqdm(valid_dic):
-            pixs = valid_dic[val]
-            for pix in pixs:
-                spatial_dic[pix] = val
-        np.save(outf,spatial_dic)
+    def reclass_tif(self):
+        f = join(self.datadir,'reclass_lc_dic2.npy')
+        reclass_dic = T.load_npy(f)
+        dict_all = {'lc1':reclass_dic}
+        df = T.spatial_dics_to_df(dict_all)
+        df = remote_sensing.Dataframe_func(df).df
+        spatial_dict = T.df_to_spatial_dic(df,'lc1')
+        spatial_dict_digit = {}
+        lc_dict_digit = {'grass':1,
+                         'forest':2,
+                         'shrubs':3,
+                         'crop':4}
+        for pix in spatial_dict:
+            lc = spatial_dict[pix]
+            lc_digit = lc_dict_digit[lc]
+            spatial_dict_digit[pix] = lc_digit
+        # arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_digit)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_digit,join(self.datadir,'reclass_lc_dic2.tif'))
 
-
-    def check_pix(self):
-        # f = data_root + 'landcover/forests_pix.npy'
-        f = data_root + 'landcover/gen_spatial_dic.npy'
-        dic = T.load_npy(f)
-        # spatial_dic = {}
-        # for val in tqdm(dic):
-        #     pixs = dic[val]
-        #     for pix in pixs:
-        #         # print(pix)
-        #         spatial_dic[pix] = 1
-        arr = DIC_and_TIF(Global_vars().tif_template_7200_3600).pix_dic_to_spatial_arr(dic)
-        plt.imshow(arr)
-        plt.show()
         pass
 
 
@@ -757,10 +780,10 @@ def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    TMP().run()
+    # TMP().run()
     # CCI_SM().run()
     # Terraclimate().run()
-    # GLC2000().run()
+    GLC2000().run()
     # CCI_SM().run()
     # VODCA().run()
     # VOD_AMSRU().run()
