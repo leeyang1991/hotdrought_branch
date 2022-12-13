@@ -1,5 +1,6 @@
 # coding=utf-8
 from preprocess import *
+import xymap
 result_root_this_script = join(results_root, 'analysis')
 year_range = '1982-2015'
 global_start_year,global_end_year = year_range.split('-')
@@ -35,12 +36,12 @@ class Water_energy_limited_area:
 
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Water_energy_limited_area',
-                                                                                       result_root_this_script)
+                                                                                       result_root_this_script,mode=2)
         pass
 
     def run(self):
-        # self.kendall_corr()
-        # self.Ecosystem_Limited_Index()
+        self.kendall_corr()
+        self.Ecosystem_Limited_Index()
         pass
 
     def kendall_corr(self):
@@ -123,7 +124,7 @@ class Water_energy_limited_area:
 class Growing_season:
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Growing_season',
-                                                                                       result_root_this_script)
+                                                                                       result_root_this_script,mode=2)
         pass
 
     def run(self):
@@ -138,120 +139,18 @@ class Growing_season:
         gs_dict = T.df_to_spatial_dic(df,'gs')
         return gs_dict
 
-class Max_Scale_correlation:
+class Max_Scale_and_Lag_correlation_SPEI:
 
     def __init__(self):
-        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Max_Scale_correlation',
-                                                                                       result_root_this_script)
-        pass
-
-    def run(self):
-        # self.NDVI_SPEI_correlation()
-        self.NDVI_SPEI_max_scale()
-
-        # self.NDVI_SPI_correlation()
-        pass
-
-    def NDVI_SPEI_correlation(self):
-        outdir = join(self.this_class_arr,'NDVI_SPEI_correlation')
-        T.mk_dir(outdir)
-        outf = join(outdir,'NDVI_SPEI_correlation.df')
-
-        gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPEI')
-        all_spatial_dicts = {}
-        for scale in SPEI_spatial_dicts:
-            SPEI_spatial_dict = SPEI_spatial_dicts[scale]
-            scale = scale.split('.')[0]
-            correlation_spatial_dict = {}
-            for pix in tqdm(NDVI_spatial_dict,desc='scale:{}'.format(scale)):
-                if not pix in gs_dict:
-                    continue
-                if not pix in SPEI_spatial_dict:
-                    continue
-                gs = gs_dict[pix]
-                ndvi = NDVI_spatial_dict[pix]
-                spei = SPEI_spatial_dict[pix]
-                ndvi_gs = T.pick_gs_monthly_data(ndvi,gs)
-                spei_gs = T.pick_gs_monthly_data(spei,gs)
-                r,p = T.nan_correlation(ndvi_gs,spei_gs)
-                correlation_spatial_dict[pix] = r
-            all_spatial_dicts[scale] = correlation_spatial_dict
-        df = T.spatial_dics_to_df(all_spatial_dicts)
-        T.save_df(df,outf)
-        T.df_to_excel(df,outf)
-
-    def NDVI_SPI_correlation(self):
-        outdir = join(self.this_class_arr,'NDVI_SPI_correlation')
-        T.mk_dir(outdir)
-        outf = join(outdir,'NDVI_SPI_correlation.df')
-
-        gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPI')
-        all_spatial_dicts = {}
-        for scale in SPEI_spatial_dicts:
-            SPEI_spatial_dict = SPEI_spatial_dicts[scale]
-            scale = scale.split('.')[0]
-            correlation_spatial_dict = {}
-            for pix in tqdm(NDVI_spatial_dict,desc='scale:{}'.format(scale)):
-                if not pix in gs_dict:
-                    continue
-                if not pix in SPEI_spatial_dict:
-                    continue
-                gs = gs_dict[pix]
-                ndvi = NDVI_spatial_dict[pix]
-                spei = SPEI_spatial_dict[pix]
-                ndvi_gs = T.pick_gs_monthly_data(ndvi,gs)
-                spei_gs = T.pick_gs_monthly_data(spei,gs)
-                r,p = T.nan_correlation(ndvi_gs,spei_gs)
-                correlation_spatial_dict[pix] = r
-            all_spatial_dicts[scale] = correlation_spatial_dict
-        df = T.spatial_dics_to_df(all_spatial_dicts)
-        T.save_df(df,outf)
-        T.df_to_excel(df,outf)
-
-    def NDVI_SPEI_max_scale(self):
-        dff = join(self.this_class_arr,'NDVI_SPEI_correlation','NDVI_SPEI_correlation.df')
-        df = T.load_df(dff)
-        df = df.dropna()
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        # exit()
-        max_scale = []
-        max_r = []
-        for i,row in tqdm(df.iterrows(),total=len(df)):
-            dict_i = {}
-            for col in cols:
-                dict_i[col] = row[col]
-            max_key = T.get_max_key_from_dict(dict_i)
-            r = dict_i[max_key]
-            scale = max_key.replace('spei','')
-            scale = int(scale)
-            max_scale.append(scale)
-            max_r.append(r)
-        df['max_scale'] = max_scale
-        df['max_r'] = max_r
-        # spatial_dict = T.df_to_spatial_dic(df,'max_scale')
-        spatial_dict = T.df_to_spatial_dic(df,'max_r')
-        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
-        plt.imshow(arr,cmap='jet')
-        plt.colorbar()
-        plt.show()
-
-
-class Max_Scale_and_Lag_correlation:
-
-    def __init__(self):
-        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Max_Scale_and_Lag_correlation',
-                                                                                       result_root_this_script)
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Max_Scale_and_Lag_correlation_SPEI',
+                                                                                       result_root_this_script,mode=2)
         pass
 
     def run(self):
         self.NDVI_SPEI_correlation()
+        self.NDVI_SPEI_max_scale()
+        self.scale_lag_bivariate_plot()
         pass
-
 
     def NDVI_SPEI_correlation(self):
         outdir = join(self.this_class_arr,'NDVI_SPEI_correlation')
@@ -287,12 +186,173 @@ class Max_Scale_and_Lag_correlation:
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
 
+    def NDVI_SPEI_max_scale(self):
+        outdir = join(self.this_class_tif,'NDVI_SPEI_max_scale')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'NDVI_SPEI_correlation','NDVI_SPEI_correlation.df')
+        df = T.load_df(dff)
+        # df = df.dropna()
+        cols = df.columns.tolist()
+        cols.remove('pix')
+        # exit()
+        max_r = []
+        max_lag_list = []
+        max_scale_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            dict_i = {}
+            for col in cols:
+                dict_i[col] = row[col]
+            max_key = T.get_max_key_from_dict(dict_i)
+            scale,lag = max_key.split('-')
+            scale = scale.replace('spei','')
+            scale = int(scale)
+            lag = lag.replace('lag','')
+            lag = int(lag)
+            max_scale_list.append(scale)
+            max_lag_list.append(lag)
+            r = dict_i[max_key]
+            max_r.append(r)
+        df['max_r'] = max_r
+        df['max_scale'] = max_scale_list
+        df['max_lag'] = max_lag_list
+
+        spatial_dict_r = T.df_to_spatial_dic(df,'max_r')
+        spatial_dict_scale = T.df_to_spatial_dic(df,'max_scale')
+        spatial_dict_lag = T.df_to_spatial_dic(df,'max_lag')
+
+        outf_r = join(outdir,'max_r.tif')
+        outf_scale = join(outdir,'max_scale.tif')
+        outf_lag = join(outdir,'max_lag.tif')
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_r,outf_r)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_scale,outf_scale)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_lag,outf_lag)
+
+    def scale_lag_bivariate_plot(self):
+        outdir = join(self.this_class_tif,'scale_lag_bivariate_plot')
+        T.mk_dir(outdir)
+        outf = join(outdir,'spei_lag.tif')
+        scale_tif = join(self.this_class_tif,'NDVI_SPEI_max_scale','max_scale.tif')
+        lag_tif = join(self.this_class_tif,'NDVI_SPEI_max_scale','max_lag.tif')
+        tif1 = scale_tif
+        tif2 = lag_tif
+        tif1_label = 'SPEI scale'
+        tif2_label = 'response lag'
+        min1,max1 = 1,12
+        min2,max2 = 0,4
+        xymap.Bivariate_plot().plot_bivariate_map(tif1, tif2, tif1_label, tif2_label, min1, max1, min2, max2, outf,
+                           n=(5, 5), n_legend=(5, 5), zcmap=None, legend_title='')
+
+
+class Max_Scale_and_Lag_correlation_SPI:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Max_Scale_and_Lag_correlation_SPI',
+                                                                                       result_root_this_script,mode=2)
+        pass
+
+    def run(self):
+        # self.NDVI_SPI_correlation()
+        # self.NDVI_SPI_max_scale()
+        self.scale_lag_bivariate_plot()
+        pass
+
+    def NDVI_SPI_correlation(self):
+        outdir = join(self.this_class_arr,'NDVI_SPI_correlation')
+        T.mk_dir(outdir)
+        outf = join(outdir,'NDVI_SPI_correlation.df')
+        lag_list = list(range(5))
+
+        gs_dict = Growing_season().longterm_growing_season()
+        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
+        SPEI_spatial_dicts = GLobal_var().load_data('SPI')
+        dict_all = {}
+        for lag in lag_list:
+            for scale in SPEI_spatial_dicts:
+                SPEI_spatial_dict = SPEI_spatial_dicts[scale]
+                scale = scale.split('.')[0]
+                correlation_spatial_dict = {}
+                for pix in tqdm(NDVI_spatial_dict,desc=f'lag:{lag},scale:{scale}'):
+                    if not pix in gs_dict:
+                        continue
+                    if not pix in SPEI_spatial_dict:
+                        continue
+                    gs = gs_dict[pix]
+                    ndvi = NDVI_spatial_dict[pix]
+                    spei = SPEI_spatial_dict[pix]
+                    gs = list(gs)
+                    ndvi_annual = T.monthly_vals_to_annual_val(ndvi,gs)
+                    spei_annual = T.monthly_vals_to_annual_val(spei,gs)
+                    r,p = T.lag_correlation(spei_annual,ndvi_annual,lag)
+                    correlation_spatial_dict[pix] = r
+                key = '{}-lag{}'.format(scale,lag)
+                dict_all[key] = correlation_spatial_dict
+        df = T.spatial_dics_to_df(dict_all)
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+    def NDVI_SPI_max_scale(self):
+        outdir = join(self.this_class_tif,'NDVI_SPI_max_scale')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'NDVI_SPI_correlation','NDVI_SPI_correlation.df')
+        df = T.load_df(dff)
+        # df = df.dropna()
+        cols = df.columns.tolist()
+        cols.remove('pix')
+        # exit()
+        max_r = []
+        max_lag_list = []
+        max_scale_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            dict_i = {}
+            for col in cols:
+                dict_i[col] = row[col]
+            max_key = T.get_max_key_from_dict(dict_i)
+            scale,lag = max_key.split('-')
+            scale = scale.replace('spi','')
+            scale = int(scale)
+            lag = lag.replace('lag','')
+            lag = int(lag)
+            max_scale_list.append(scale)
+            max_lag_list.append(lag)
+            r = dict_i[max_key]
+            max_r.append(r)
+        df['max_r'] = max_r
+        df['max_scale'] = max_scale_list
+        df['max_lag'] = max_lag_list
+
+        spatial_dict_r = T.df_to_spatial_dic(df,'max_r')
+        spatial_dict_scale = T.df_to_spatial_dic(df,'max_scale')
+        spatial_dict_lag = T.df_to_spatial_dic(df,'max_lag')
+
+        outf_r = join(outdir,'max_r.tif')
+        outf_scale = join(outdir,'max_scale.tif')
+        outf_lag = join(outdir,'max_lag.tif')
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_r,outf_r)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_scale,outf_scale)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_lag,outf_lag)
+
+    def scale_lag_bivariate_plot(self):
+        outdir = join(self.this_class_tif,'scale_lag_bivariate_plot')
+        T.mk_dir(outdir)
+        outf = join(outdir,'spi_lag.tif')
+        scale_tif = join(self.this_class_tif,'NDVI_SPI_max_scale','max_scale.tif')
+        lag_tif = join(self.this_class_tif,'NDVI_SPI_max_scale','max_lag.tif')
+        tif1 = scale_tif
+        tif2 = lag_tif
+        tif1_label = 'SPI scale'
+        tif2_label = 'response lag'
+        min1,max1 = 1,12
+        min2,max2 = 0,4
+        xymap.Bivariate_plot().plot_bivariate_map(tif1, tif2, tif1_label, tif2_label, min1, max1, min2, max2, outf,
+                           n=(5, 5), n_legend=(5, 5), zcmap=None, legend_title='')
+
+        pass
 
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
-    # Max_Scale_correlation().run()
-    Max_Scale_and_Lag_correlation().run()
+    # Max_Scale_and_Lag_correlation_SPEI().run()
+    Max_Scale_and_Lag_correlation_SPI().run()
     pass
 
 
