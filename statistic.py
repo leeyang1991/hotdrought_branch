@@ -1,6 +1,8 @@
 # coding=utf-8
 from analysis import *
 result_root_this_script = join(results_root, 'statistic')
+global_drought_type_list = ['normal-drought', 'hot-drought']
+
 
 class Dataframe_func:
 
@@ -134,7 +136,7 @@ class Dataframe:
         pass
 
     def run(self):
-        # df = self.add_rs_rt_df()
+        df = self.add_rs_rt_df()
         df = self.__gen_df_init()
         df = Dataframe_func(df).df
 
@@ -161,6 +163,8 @@ class Dataframe:
     def add_rs_rt_df(self):
         dff = Resistance_Resilience().dff
         df = T.load_df(dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
         return df
 
 class Hot_Normal_Rs_Rt:
@@ -174,13 +178,13 @@ class Hot_Normal_Rs_Rt:
         pass
 
     def run(self):
-        # self.rs_rt_tif()
+        self.rs_rt_tif()
         #
-        # self.rs_rt_bar()
-        # self.rs_rt_hist()
+        self.rs_rt_bar()
+        self.rs_rt_hist()
 
-        # self.rs_rt_bar_water_energy_limited()
-        # self.rs_rt_bar_Humid_Arid()
+        self.rs_rt_bar_water_energy_limited()
+        self.rs_rt_bar_Humid_Arid()
         self.rs_rt_bar_PFTs()
         pass
 
@@ -421,10 +425,190 @@ class Water_Energy_ltd:
         pass
 
 
+class ELI_AI_gradient:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('ELI_AI_gradient', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        self.lag_ELI()
+        self.lag_AI()
+        # self.scale_ELI()
+        # self.scale_AI()
+        pass
+
+    def lag_ELI(self):
+        outdir = join(self.this_class_png, 'lag_ELI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        df_group_dict = T.df_groupby(df, 'pix')
+
+        lag_list = []
+        ELI_list = []
+        for pix in df_group_dict:
+            df_pix = df_group_dict[pix]
+            lag = df_pix['max_lag']
+            ELI = df_pix['ELI']
+            lag_mean = np.nanmean(lag)
+            ELI_mean = np.nanmean(ELI)
+            lag_list.append(lag_mean)
+            ELI_list.append(ELI_mean)
+        df_new = pd.DataFrame()
+        df_new['lag'] = lag_list
+        df_new['ELI'] = ELI_list
+        bins = np.linspace(-0.6, 0.6, 20)
+        df_group, bins_list_str = T.df_bin(df_new, 'ELI', bins)
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['lag'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            x_list.append(name.left)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(6,3))
+        plt.errorbar(x_list, y_list, yerr=err_list)
+        plt.xlabel('ELI (energy-limited --> water-limited)')
+        plt.ylabel('Lag (years)')
+        plt.tight_layout()
+
+        outf = join(outdir, 'lag_ELI.png')
+        plt.savefig(outf, dpi=300)
+
+
+    def lag_AI(self):
+        outdir = join(self.this_class_png, 'lag_AI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        df_group_dict = T.df_groupby(df, 'pix')
+
+        lag_list = []
+        ELI_list = []
+        for pix in df_group_dict:
+            df_pix = df_group_dict[pix]
+            lag = df_pix['max_lag']
+            ELI = df_pix['aridity_index']
+            lag_mean = np.nanmean(lag)
+            ELI_mean = np.nanmean(ELI)
+            lag_list.append(lag_mean)
+            ELI_list.append(ELI_mean)
+        df_new = pd.DataFrame()
+        df_new['lag'] = lag_list
+        df_new['aridity_index'] = ELI_list
+        bins = np.linspace(0, 3, 20)
+        df_group, bins_list_str = T.df_bin(df_new, 'aridity_index', bins)
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['lag'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            x_list.append(name.left)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(6,3))
+        plt.errorbar(x_list, y_list, yerr=err_list)
+        plt.xlabel('AI (Arid --> Humid)')
+        plt.ylabel('Lag (years)')
+        plt.tight_layout()
+
+        outf = join(outdir, 'lag_ELI.png')
+        plt.savefig(outf, dpi=300)
+
+    def scale_ELI(self):
+        outdir = join(self.this_class_png, 'scale_ELI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        df_group_dict = T.df_groupby(df, 'pix')
+
+        lag_list = []
+        ELI_list = []
+        for pix in df_group_dict:
+            df_pix = df_group_dict[pix]
+            lag = df_pix['max_scale']
+            ELI = df_pix['ELI']
+            lag_mean = np.nanmean(lag)
+            ELI_mean = np.nanmean(ELI)
+            lag_list.append(lag_mean)
+            ELI_list.append(ELI_mean)
+        df_new = pd.DataFrame()
+        df_new['max_scale'] = lag_list
+        df_new['ELI'] = ELI_list
+        bins = np.linspace(-0.6, 0.6, 20)
+        df_group, bins_list_str = T.df_bin(df_new, 'ELI', bins)
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['max_scale'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            x_list.append(name.left)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(6,3))
+        plt.errorbar(x_list, y_list, yerr=err_list)
+        plt.xlabel('ELI (energy-limited --> water-limited)')
+        plt.ylabel('SPEI scale')
+        plt.tight_layout()
+
+        outf = join(outdir, 'scale_ELI.png')
+        plt.savefig(outf, dpi=300)
+
+    def scale_AI(self):
+        outdir = join(self.this_class_png, 'scale_AI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        df_group_dict = T.df_groupby(df, 'pix')
+
+        lag_list = []
+        ELI_list = []
+        for pix in df_group_dict:
+            df_pix = df_group_dict[pix]
+            lag = df_pix['max_scale']
+            ELI = df_pix['aridity_index']
+            lag_mean = np.nanmean(lag)
+            ELI_mean = np.nanmean(ELI)
+            lag_list.append(lag_mean)
+            ELI_list.append(ELI_mean)
+        df_new = pd.DataFrame()
+        df_new['max_scale'] = lag_list
+        df_new['aridity_index'] = ELI_list
+        bins = np.linspace(0, 3, 20)
+        df_group, bins_list_str = T.df_bin(df_new, 'aridity_index', bins)
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['max_scale'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            x_list.append(name.left)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(6,3))
+        plt.errorbar(x_list, y_list, yerr=err_list)
+        plt.xlabel('AI (Arid --> Humid)')
+        plt.ylabel('SPEI scale')
+        plt.tight_layout()
+
+        outf = join(outdir, 'scale_ELI.png')
+        plt.savefig(outf, dpi=300)
+
 def main():
     # Dataframe().run()
-    Hot_Normal_Rs_Rt().run()
-    # Water_Energy_ltd().run()
+    # Hot_Normal_Rs_Rt().run()
+    Water_Energy_ltd().run()
+    # ELI_AI_gradient().run()
     pass
 
 
