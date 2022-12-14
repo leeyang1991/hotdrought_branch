@@ -1,6 +1,7 @@
 # coding=utf-8
 from preprocess import *
 import xymap
+import statistic
 result_root_this_script = join(results_root, 'analysis')
 year_range = '1982-2015'
 global_start_year,global_end_year = year_range.split('-')
@@ -32,6 +33,23 @@ class GLobal_var:
             raise ValueError('path_type not recognized')
         return spatial_dict
 
+    def load_df(self):
+        dff = join(statistic.Dataframe().dff)
+        df = T.load_df(dff)
+        cols = self.get_rs_rt_cols()
+        for col in cols:
+            df = df[df[col]<1.4]
+            df = df[df[col]>0.6]
+        return df
+
+    def get_rs_rt_cols(self):
+        post_n_list = [1, 2, 3, 4]
+        cols = ['rt']
+        for n in post_n_list:
+            cols.append('rs_{}'.format(n))
+        return cols
+
+
 class Water_energy_limited_area:
 
     def __init__(self):
@@ -40,8 +58,10 @@ class Water_energy_limited_area:
         pass
 
     def run(self):
-        self.kendall_corr()
-        self.Ecosystem_Limited_Index()
+        # self.kendall_corr()
+        # self.significant_pix_p()
+        self.significant_pix_r()
+        # self.Ecosystem_Limited_Index()
         pass
 
     def kendall_corr(self):
@@ -119,6 +139,58 @@ class Water_energy_limited_area:
         DIC_and_TIF().pix_dic_to_tif(spatial_dict_Rn_r,outf_Rn_r)
         DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_r,outf_Temp_r)
 
+
+    def significant_pix_p(self):
+        outdir = join(self.this_class_tif,'significant_pix')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'kendall_corr','kendall_corr.df')
+        df = T.load_df(dff)
+        T.print_head_n(df,5)
+        ELI_Rn_significance_list = []
+        ELI_Temp_significance_list = []
+        for i,row in df.iterrows():
+            if row['ET_SM_p']>0.01 and row['ET_Rn_p']>0.01:
+                ELI_Rn_significance_list.append(0)
+            else:
+                ELI_Rn_significance_list.append(1)
+            if row['ET_SM_p']>0.01 and row['ET_Temp_p']>0.01:
+                ELI_Temp_significance_list.append(0)
+            else:
+                ELI_Temp_significance_list.append(1)
+        df['ELI_Rn_significance'] = ELI_Rn_significance_list
+        df['ELI_Temp_significance'] = ELI_Temp_significance_list
+
+        spatial_dict_Rn_significance = T.df_to_spatial_dic(df,'ELI_Rn_significance')
+        spatial_dict_Temp_significance = T.df_to_spatial_dic(df,'ELI_Temp_significance')
+
+        outf_Rn_significance = join(outdir,'ELI_Rn_significance.tif')
+        outf_Temp_significance = join(outdir,'ELI_Temp_significance.tif')
+
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Rn_significance,outf_Rn_significance)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_significance,outf_Temp_significance)
+
+    def significant_pix_r(self):
+        outdir = join(self.this_class_tif,'significant_pix_r')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'kendall_corr','kendall_corr.df')
+        df = T.load_df(dff)
+        T.print_head_n(df,5)
+        ELI_Temp_significance_list = []
+        for i,row in df.iterrows():
+            if row['ET_SM_r']<0.1 and row['ET_Temp_r']<0.1:
+                ELI_Temp_significance_list.append(0)
+            elif np.isnan(row['ET_SM_r']) or np.isnan(row['ET_Temp_r']):
+                ELI_Temp_significance_list.append(0)
+            else:
+                ELI_Temp_significance_list.append(1)
+        df['ELI_Temp_significance'] = ELI_Temp_significance_list
+
+        spatial_dict_Temp_significance = T.df_to_spatial_dic(df,'ELI_Temp_significance')
+
+        outf_Temp_significance = join(outdir,'ELI_Temp_significance.tif')
+
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_significance,outf_Temp_significance)
+
         pass
 
 class Growing_season:
@@ -138,95 +210,6 @@ class Growing_season:
         df = T.load_df(dff)
         gs_dict = T.df_to_spatial_dic(df,'gs')
         return gs_dict
-
-class Dataframe_func:
-
-    def __init__(self,df):
-        print('add lon lat')
-        df = self.add_lon_lat(df)
-        print('add landcover')
-        df = self.add_GLC_landcover_data_to_df(df)
-        print('add NDVI mask')
-        df = self.add_NDVI_mask(df)
-        print('add Aridity Index')
-        df = self.add_AI_to_df(df)
-        print('add ELI')
-        df = self.add_ELI_to_df(df)
-        df = self.clean_df(df)
-        self.df = df
-
-    def clean_df(self,df):
-
-        # df = df[df['lat']>=30]
-        # df = df[df['landcover_GLC'] != 'Crop']
-        df = df[df['NDVI_MASK'] == 1]
-
-        return df
-    def add_GLC_landcover_data_to_df(self, df):
-        f = join(data_root,'GLC2000/reclass_lc_dic2.npy')
-        val_dic=T.load_npy(f)
-        val_list = []
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row['pix']
-            if not pix in val_dic:
-                val_list.append(np.nan)
-                continue
-            vals = val_dic[pix]
-            val_list.append(vals)
-        df['landcover_GLC'] = val_list
-        return df
-
-    def add_NDVI_mask(self,df):
-        # f =rf'C:/Users/pcadmin/Desktop/Data/Base_data/NDVI_mask.tif'
-        f = join(data_root, 'GIMMS_NDVI/NDVI_mask.tif')
-        print(f)
-
-        array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(f)
-        array = np.array(array, dtype=float)
-        val_dic = DIC_and_TIF().spatial_arr_to_dic(array)
-        f_name = 'NDVI_MASK'
-        print(f_name)
-        # exit()
-        val_list = []
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-
-            pix = row['pix']
-            if not pix in val_dic:
-                val_list.append(np.nan)
-                continue
-            vals = val_dic[pix]
-            if vals < -99:
-                val_list.append(np.nan)
-                continue
-            val_list.append(vals)
-        df[f_name] = val_list
-        return df
-
-    def add_AI_to_df(self, df):
-        f = join(data_root, 'Aridity_Index/aridity_index.tif')
-        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
-        df = T.add_spatial_dic_to_df(df, spatial_dict, 'aridity_index')
-        return df
-
-    def drop_n_std(self, vals, n=1):
-        vals = np.array(vals)
-        mean = np.nanmean(vals)
-        std = np.nanstd(vals)
-        up = mean + n * std
-        down = mean - n * std
-        vals[vals > up] = np.nan
-        vals[vals < down] = np.nan
-        return vals
-
-    def add_lon_lat(self,df):
-        df = T.add_lon_lat_to_df(df, DIC_and_TIF())
-        return df
-
-    def add_ELI_to_df(self,df):
-        f = join(Water_energy_limited_area().this_class_tif, 'ELI/ELI_Temp_r.tif')
-        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
-        df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI')
-        return df
 
 class Max_Scale_and_Lag_correlation_SPEI:
 
@@ -698,14 +681,13 @@ class Resistance_Resilience:
         pass
 
     def run(self):
-        # self.gen_dataframe()
+        self.gen_dataframe()
         df = self.__gen_df_init()
-        # df = self.add_max_lag_and_scale(df)
-        # df = self.cal_rt(df)
+        df = self.add_max_lag_and_scale(df)
+        df = self.cal_rt(df)
         df = self.cal_rs(df)
         # self.rt_tif(df)
 
-        # df = Dataframe_func(df).df
         T.save_df(df, self.dff)
         T.df_to_excel(df, self.dff)
 
@@ -932,12 +914,12 @@ class Resistance_Resilience:
 
 
 def main():
-    # Water_energy_limited_area().run()
+    Water_energy_limited_area().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
-    Resistance_Resilience().run()
+    # Resistance_Resilience().run()
     pass
 
 
