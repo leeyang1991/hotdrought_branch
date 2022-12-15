@@ -378,7 +378,7 @@ class Water_Energy_ltd:
         pass
 
     def run(self):
-        # self.ELI()
+        self.ELI()
         self.AI()
         pass
 
@@ -435,8 +435,10 @@ class ELI_AI_gradient:
     def run(self):
         self.lag_ELI()
         self.lag_AI()
-        # self.scale_ELI()
-        # self.scale_AI()
+        self.scale_ELI()
+        self.scale_AI()
+        self.rt_rs_ELI()
+        self.rt_rs_AI()
         pass
 
     def lag_ELI(self):
@@ -604,11 +606,285 @@ class ELI_AI_gradient:
         outf = join(outdir, 'scale_ELI.png')
         plt.savefig(outf, dpi=300)
 
+    def rt_rs_ELI(self):
+        outdir = join(self.this_class_png, 'rt_rs_ELI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group_dict = T.df_groupby(df_drt, 'pix')
+            for col in rs_rt_var_list:
+                vals_list = []
+                ELI_list = []
+                for pix in tqdm(df_group_dict,desc=f'{drt} {col}'):
+                    df_pix = df_group_dict[pix]
+                    vals = df_pix[col]
+                    ELI = df_pix['ELI']
+                    vals_mean = np.nanmean(vals)
+                    ELI_mean = np.nanmean(ELI)
+                    vals_list.append(vals_mean)
+                    ELI_list.append(ELI_mean)
+                df_new = pd.DataFrame()
+                df_new[col] = vals_list
+                df_new['ELI'] = ELI_list
+                bins = np.linspace(-0.6, 0.6, 20)
+                df_group, bins_list_str = T.df_bin(df_new, 'ELI', bins)
+                x_list = []
+                y_list = []
+                err_list = []
+                for name, df_group_i in df_group:
+                    vals = df_group_i[col].tolist()
+                    mean = np.nanmean(vals)
+                    err, _, _ = T.uncertainty_err(vals)
+                    x_list.append(name.left)
+                    y_list.append(mean)
+                    err_list.append(err)
+                plt.figure(figsize=(6, 3))
+                plt.errorbar(x_list, y_list, yerr=err_list)
+                plt.xlabel('ELI (energy-limited --> water-limited)')
+                plt.title(f'{drt} {col}')
+                if col == 'rt':
+                    plt.ylim(0.89,1.05)
+                else:
+                    plt.ylim(0.95, 1.05)
+                outf = join(outdir, f'{drt}_{col}.png')
+                plt.tight_layout()
+                plt.savefig(outf, dpi=300)
+                plt.close()
+
+    def rt_rs_AI(self):
+        outdir = join(self.this_class_png, 'rt_rs_AI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        T.print_head_n(df, 5)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group_dict = T.df_groupby(df_drt, 'pix')
+            for col in rs_rt_var_list:
+                vals_list = []
+                ELI_list = []
+                for pix in tqdm(df_group_dict,desc=f'{drt} {col}'):
+                    df_pix = df_group_dict[pix]
+                    vals = df_pix[col]
+                    ELI = df_pix['aridity_index']
+                    vals_mean = np.nanmean(vals)
+                    ELI_mean = np.nanmean(ELI)
+                    vals_list.append(vals_mean)
+                    ELI_list.append(ELI_mean)
+                df_new = pd.DataFrame()
+                df_new[col] = vals_list
+                df_new['aridity_index'] = ELI_list
+                bins = np.linspace(0, 3, 20)
+                df_group, bins_list_str = T.df_bin(df_new, 'aridity_index', bins)
+                x_list = []
+                y_list = []
+                err_list = []
+                for name, df_group_i in df_group:
+                    vals = df_group_i[col].tolist()
+                    mean = np.nanmean(vals)
+                    err, _, _ = T.uncertainty_err(vals)
+                    x_list.append(name.left)
+                    y_list.append(mean)
+                    err_list.append(err)
+                plt.figure(figsize=(6, 3))
+                plt.errorbar(x_list, y_list, yerr=err_list)
+                plt.xlabel('AI (Arid --> Humid)')
+                plt.title(f'{drt} {col}')
+                if col == 'rt':
+                    plt.ylim(0.89,1.05)
+                else:
+                    plt.ylim(0.95, 1.05)
+                outf = join(outdir, f'{drt}_{col}.png')
+                plt.tight_layout()
+                plt.savefig(outf, dpi=300)
+                plt.close()
+
+
+class Rt_Rs_change_overtime:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Rt_Rs_change_overtime', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.every_year()
+        # self.every_5_year()
+        self.every_10_year()
+        pass
+
+    def every_year(self):
+        outdir = join(self.this_class_png, 'every_year')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        drought_year_col = 'drought_year'
+        ELI_class_col = 'ELI_class'
+        ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+
+        for ltd in ELI_class_list:
+            df_ltd = df[df[ELI_class_col] == ltd]
+            for drt in drought_type_list:
+                df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                for col in rs_rt_var_list:
+                    df_group_dict = T.df_groupby(df_drt, drought_year_col)
+                    year_list = []
+                    for year in df_group_dict:
+                        year_list.append(year)
+                    year_list.sort()
+                    vals_list = []
+                    err_list = []
+                    for year in year_list:
+                        df_year = df_group_dict[year]
+                        vals = df_year[col].tolist()
+                        mean = np.nanmean(vals)
+                        err, _, _ = T.uncertainty_err(vals)
+                        vals_list.append(mean)
+                        err_list.append(err)
+                    plt.errorbar(year_list, vals_list, yerr=err_list)
+                    title = f'{drt} {ltd} {col}'
+                    plt.title(title)
+                    plt.savefig(join(outdir, f'{title}.png'))
+                    plt.close()
+                    # plt.show()
+
+    def every_5_year(self):
+        outdir = join(self.this_class_png, 'every_5_year')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        drought_year_col = 'drought_year'
+        ELI_class_col = 'ELI_class'
+        ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+
+        group_year_list = [
+            [1982, 1983, 1984, 1985, 1986],
+            [1987, 1988, 1989, 1990, 1991],
+            [1992, 1993, 1994, 1995, 1996],
+            [1997, 1998, 1999, 2000, 2001],
+            [2002, 2003, 2004, 2005, 2006],
+            [2007, 2008, 2009, 2010, 2011],
+            [2012, 2013, 2014, 2015],
+        ]
+
+        for ltd in ELI_class_list:
+            df_ltd = df[df[ELI_class_col] == ltd]
+            for drt in drought_type_list:
+                df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                for col in rs_rt_var_list:
+                    vals_list = []
+                    err_list = []
+                    year_list = []
+                    for years in group_year_list:
+                        df_years_list = []
+                        for year in years:
+                            df_year = df_drt[df_drt[drought_year_col] == year]
+                            df_years_list.append(df_year)
+                        df_years = pd.concat(df_years_list)
+                        vals = df_years[col].tolist()
+                        mean = np.nanmean(vals)
+                        err, _, _ = T.uncertainty_err(vals)
+                        vals_list.append(mean)
+                        err_list.append(err)
+                        year_list.append(f'{years[0]}-{years[-1]}')
+                    plt.figure(figsize=(6, 3))
+                    plt.errorbar(year_list, vals_list, yerr=err_list)
+                    title = f'{drt} {ltd} {col}'
+                    plt.title(title)
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                    plt.savefig(join(outdir, f'{title}.png'))
+                    plt.close()
+                    # plt.show()
+
+    def every_10_year(self):
+        outdir = join(self.this_class_png, 'every_10_year')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        drought_year_col = 'drought_year'
+        ELI_class_col = 'ELI_class'
+        ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+
+        group_year_list = [
+            [1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991],
+            [1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001],
+            [2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011],
+            [2012, 2013, 2014, 2015],
+        ]
+
+        for ltd in ELI_class_list:
+            df_ltd = df[df[ELI_class_col] == ltd]
+            for drt in drought_type_list:
+                df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                for col in rs_rt_var_list:
+                    vals_list = []
+                    err_list = []
+                    year_list = []
+                    for years in group_year_list:
+                        df_years_list = []
+                        for year in years:
+                            df_year = df_drt[df_drt[drought_year_col] == year]
+                            df_years_list.append(df_year)
+                        df_years = pd.concat(df_years_list)
+                        vals = df_years[col].tolist()
+                        mean = np.nanmean(vals)
+                        err, _, _ = T.uncertainty_err(vals)
+                        vals_list.append(mean)
+                        err_list.append(err)
+                        year_list.append(f'{years[0]}-{years[-1]}')
+                    plt.figure(figsize=(6, 3))
+                    plt.errorbar(year_list, vals_list, yerr=err_list)
+                    title = f'{drt} {ltd} {col}'
+                    plt.title(title)
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                    plt.savefig(join(outdir, f'{title}.png'))
+                    plt.close()
+                    # plt.show()
+
+
+class Drought_evnets_progress:
+    '''
+    introduce NDVI, CSIF, VOD, VPD, SM, ET, T, SPI, P
+    optimal Temperature
+    '''
+    def __init__(self):
+
+        pass
+
+    def run(self):
+
+        pass
+
+class Rt_Rs_relationship:
+    '''
+    Rt, Rs trade off
+    '''
+    def __init__(self):
+
+        pass
+
+    def run(self):
+
+        pass
+
+
+
 def main():
     # Dataframe().run()
     # Hot_Normal_Rs_Rt().run()
-    Water_Energy_ltd().run()
+    # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
+    Rt_Rs_change_overtime().run()
     pass
 
 
