@@ -964,13 +964,61 @@ class Rt_Rs_relationship:
     Rt, Rs trade off
     '''
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Rt_Rs_relationship', result_root_this_script, mode=2)
         pass
 
     def run(self):
-
+        self.rs_rt()
         pass
 
+    def rs_rt(self):
+        outdir = join(self.this_class_png, 'rs_rt')
+        T.mk_dir(outdir)
+
+        rs_rt_col = GLobal_var().get_rs_rt_cols()
+        rs_rt_col.remove('rt')
+        rs_col = rs_rt_col
+        ltd_var = 'ELI_class'
+        limited_area_list = global_ELI_class
+        drought_type_list = global_drought_type_list
+        drought_type_color = {'normal-drought': 'b', 'hot-drought': 'r'}
+        drought_type_cmap = {'normal-drought': 'Blues', 'hot-drought': 'Reds'}
+        df = GLobal_var().load_df()
+        for ltd in limited_area_list:
+            df_ltd = df[df[ltd_var] == ltd]
+            for rs_col_i in rs_col:
+                ax = plt.subplot(111)
+                for drt in drought_type_list:
+                    df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                    rs = df_drt[rs_col_i].tolist()
+                    rt = df_drt['rt'].tolist()
+                    rs = np.array(rs)
+                    rt = np.array(rt)
+                    x_lim = (0.9, 1.1)
+                    y_lim = (0.9, 1.1)
+                    df_new = pd.DataFrame()
+                    df_new['rs'] = rs
+                    df_new['rt'] = rt
+                    df_new = df_new.dropna()
+                    df_new = df_new[df_new['rt'] > x_lim[0]]
+                    df_new = df_new[df_new['rt'] < x_lim[1]]
+                    df_new = df_new[df_new['rs'] > y_lim[0]]
+                    df_new = df_new[df_new['rs'] < y_lim[1]]
+                    rt = df_new['rt'].tolist()
+                    rs = df_new['rs'].tolist()
+
+                    # KDE_plot().plot_scatter_hex(rs,rt,xlim=x_lim,ylim=y_lim,gridsize=40)
+                    cmap = KDE_plot().cmap_with_transparency(drought_type_cmap[drt], max_alpha=0.2)
+                    KDE_plot().plot_scatter(rt,rs,cmap=cmap,s=40,ax=ax,marker='o')
+                plt.xlabel('rt')
+                plt.ylabel(rs_col_i)
+                plt.title(f'{ltd}')
+                outf = join(outdir, f'{ltd}_{rs_col_i}.pdf')
+                # plt.show()
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                exit()
 
 
 def main():
@@ -979,7 +1027,8 @@ def main():
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    Drought_evnets_proess().run()
+    # Drought_evnets_proess().run()
+    Rt_Rs_relationship().run()
     pass
 
 
