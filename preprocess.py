@@ -4,6 +4,8 @@ from __init__ import *
 import climate_indices
 from climate_indices import compute
 from climate_indices import indices
+import analysis
+
 land_tif = join(this_root,'conf/land.tif')
 
 class Meta_information:
@@ -34,7 +36,11 @@ class Meta_information:
                 'path_type': 'dir',
             },
             'Temperature': {
-                'path': join(data_root, f'CRU_tmp/detrend/{year_range}/detrend.npy'),
+                'path': join(data_root, f'CRU_tmp/detrend/{year_range}/temp.npy'),
+                'path_type': 'file',
+            },
+            'Precipitation': {
+                'path': join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy'),
                 'path_type': 'file',
             },
             'Radiation': {
@@ -43,6 +49,10 @@ class Meta_information:
             },
             'ET': {
                 'path': join(data_root, f'Terraclimate/aet/detrend/{year_range}/aet.npy'),
+                'path_type': 'file',
+            },
+            'VPD': {
+                'path': join(data_root, f'VPD/detrend/{year_range}/VPD.npy'),
                 'path_type': 'file',
             },
         }
@@ -55,8 +65,48 @@ class GIMMS_NDVI:
         self.datadir = join(data_root, 'GIMMS_NDVI')
         pass
 
-
     def run(self):
+        self.pick_annual_gs_NDVI_origin()
+        self.pick_annual_gs_NDVI()
+
+
+    def pick_annual_gs_NDVI_origin(self):
+        var_name = 'NDVI_origin'
+        outdir = join(self.datadir, 'per_pix_clean',analysis.year_range+'_gs')
+        gs_dict = analysis.Growing_season().longterm_growing_season()
+        spatial_dict = analysis.GLobal_var().load_data(var_name)
+        T.mkdir(outdir)
+        outf = join(outdir, f'{var_name}')
+        annual_spatial_dict = {}
+        for pix in tqdm(spatial_dict):
+            if not pix in gs_dict:
+                continue
+            gs = gs_dict[pix]
+            gs = list(gs)
+            vals = spatial_dict[pix]
+            vals_annual = T.monthly_vals_to_annual_val(vals, gs)
+            annual_spatial_dict[pix] = vals_annual
+        T.save_npy(annual_spatial_dict, outf)
+
+    def pick_annual_gs_NDVI(self):
+        var_name = 'NDVI'
+        outdir = join(self.datadir, 'per_pix_clean_anomaly_detrend',analysis.year_range+'_gs')
+        gs_dict = analysis.Growing_season().longterm_growing_season()
+        spatial_dict = analysis.GLobal_var().load_data(var_name)
+        T.mkdir(outdir)
+        outf = join(outdir, f'{var_name}')
+        annual_spatial_dict = {}
+        for pix in tqdm(spatial_dict):
+            if not pix in gs_dict:
+                continue
+            gs = gs_dict[pix]
+            gs = list(gs)
+            vals = spatial_dict[pix]
+            vals_annual = T.monthly_vals_to_annual_val(vals, gs)
+            annual_spatial_dict[pix] = vals_annual
+        T.save_npy(annual_spatial_dict, outf)
+
+    def check_pix(self):
         # fdir = join(self.datadir,'per_pix_clean_anomaly_detrend')
         # spatial_dict = T.load_npy_dir(fdir)
         # spatial_dict_count = {}
@@ -115,8 +165,9 @@ class SPI:
 
     def run(self):
         # self.cal_spi()
-        # self.pick_SPI_1982_2015()
-        self.check_spi()
+        # self.pick_SPI_year_range()
+        self.pick_annual_gs()
+        # self.check_spi()
         pass
 
     def cal_spi(self):
@@ -157,9 +208,9 @@ class SPI:
                 # plt.show()
             T.save_npy(spatial_dic,outf)
 
-    def pick_SPI_1982_2015(self):
+    def pick_SPI_year_range(self):
         fdir = join(self.datadir,'per_pix_spi','1930-2020')
-        outdir = join(self.datadir,'per_pix_spi','1982-2015')
+        outdir = join(self.datadir,'per_pix_spi',analysis.year_range)
         T.mk_dir(outdir)
         start_year = 1930
         end_year = 2020
@@ -189,8 +240,9 @@ class SPI:
                 picked_vals_dic[pix] = picked_vals
             T.save_npy(picked_vals_dic,outf)
 
+
     def check_spi(self):
-        fdir = join(self.datadir,'per_pix_spi','1982-2015')
+        fdir = join(self.datadir,'per_pix_spi',analysis.year_range)
         for f in T.listdir(fdir):
             fpath = join(fdir,f)
             spatial_dict = T.load_npy(fpath)
@@ -201,6 +253,93 @@ class SPI:
             arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
             plt.imshow(arr)
             plt.show()
+
+
+class Precipitation:
+
+    def __init__(self):
+        self.datadir = join(data_root,'CRU_precip')
+        pass
+
+    def run(self):
+        self.pick_year_range()
+        # self.anomaly()
+        self.detrend()
+        # self.check_per_pix()
+        pass
+
+    def pick_year_range(self):
+        fdir = join(self.datadir,'per_pix','1930-2020')
+        outdir = join(self.datadir,'per_pix',analysis.year_range)
+        T.mk_dir(outdir)
+        outf = join(outdir,'precip')
+        start_year = 1930
+        end_year = 2020
+        date_list = []
+        for y in range(start_year, end_year + 1):
+            for m in range(1, 13):
+                date = f'{y}-{m:02d}'
+                date_list.append(date)
+
+        pick_date_list = []
+        for y in range(1982, 2015 + 1):
+            for m in range(1, 13):
+                date = f'{y}-{m:02d}'
+                pick_date_list.append(date)
+
+        dic = T.load_npy_dir(fdir)
+        picked_vals_dic = {}
+        for pix in tqdm(dic):
+            vals = dic[pix]
+            vals = np.array(vals,dtype=np.float32)
+            vals[vals < 0] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            dic_i = dict(zip(date_list, vals))
+            picked_vals = []
+            for date in pick_date_list:
+                val = dic_i[date]
+                picked_vals.append(val)
+            picked_vals = np.array(picked_vals)
+            picked_vals_dic[pix] = picked_vals
+        T.save_npy(picked_vals_dic, outf)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix',analysis.year_range)
+        outdir = join(self.datadir,'anomaly',analysis.year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly/1982-2015')
+        outdir = join(self.datadir,'detrend/1982-2015')
+        T.mk_dir(outdir)
+        outf = join(outdir,'precip.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def check_per_pix(self):
+        # fdir = join(self.datadir, 'per_pix', analysis.year_range)
+        fdir = join(self.datadir, 'anomaly', analysis.year_range)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict1 = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            # a,b,r,p = T.nan_line_fit(list(range(len(vals))),vals)
+            vals = np.array(vals,dtype=np.float)
+            if type(vals) == float:
+                continue
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            # spatial_dict1[pix] = np.mean(vals)
+            spatial_dict1[pix] = len(vals)
+            # spatial_dict1[pix] = a
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
+        plt.imshow(arr)
+        plt.show()
+        pass
 
 class TMP:
     def __init__(self):
@@ -223,8 +362,8 @@ class TMP:
 
 
     def check_per_pix(self):
-        # fdir = join(self.datadir, 'per_pix', '1982-2015')
-        fdir = join(self.datadir, 'anomaly', '1982-2015')
+        # fdir = join(self.datadir, 'per_pix', analysis.year_range)
+        fdir = join(self.datadir, 'anomaly', analysis.year_range)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict1 = {}
         for pix in tqdm(spatial_dict):
@@ -236,6 +375,58 @@ class TMP:
             #     continue
             # spatial_dict1[pix] = np.mean(vals)
             spatial_dict1[pix] = a
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
+        plt.imshow(arr)
+        plt.show()
+        pass
+
+
+class VPD:
+    '''
+    calculate from CRU
+    '''
+    def __init__(self):
+        self.datadir = join(data_root, 'VPD')
+        pass
+
+    def run(self):
+        # self.anomaly()
+        self.detrend()
+        # self.check_per_pix()
+        pass
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix',analysis.year_range)
+        outdir = join(self.datadir,'anomaly',analysis.year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+        pass
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly',analysis.year_range)
+        outdir = join(self.datadir,'detrend',analysis.year_range)
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        outf = join(outdir,'VPD.npy')
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def check_per_pix(self):
+        fdir = join(self.datadir, 'per_pix',analysis.year_range)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict1 = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            # a,b,r,p = T.nan_line_fit(list(range(len(vals))),vals)
+            vals = np.array(vals)
+            vals[vals<0] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            plt.plot(vals)
+            plt.show()
+            # spatial_dict1[pix] = np.mean(vals)
+            # spatial_dict1[pix] = a
+            spatial_dict1[pix] = len(vals)
         arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
         plt.imshow(arr)
         plt.show()
@@ -503,27 +694,6 @@ class VODCA:
         pass
 
 
-def seasonal_split_ly_NDVI():
-    fdir = join(data_root, 'NDVI_ly/per_pix')
-    outdir = join(data_root, 'NDVI_ly/per_pix_seasonal')
-    T.mk_dir(outdir)
-    dic = T.load_npy_dir(fdir)
-    for season in global_season_dic:
-        gs_range = global_season_dic[season]
-        annual_dic = {}
-        for pix in tqdm(dic,desc=season):
-            vals = dic[pix]
-            vals = np.array(vals)
-            T.mask_999999_arr(vals)
-            vals[vals == 0] = np.nan
-            if np.isnan(np.nanmean(vals)):
-                continue
-            annual_vals = T.monthly_vals_to_annual_val(vals,gs_range)
-            annual_dic[pix] = annual_vals
-        outf = join(outdir,season)
-        T.save_npy(annual_dic,outf)
-
-
 class VOD_AMSRU:
 
     def __init__(self):
@@ -777,13 +947,15 @@ class Terraclimate:
 
 
 def main():
-    # GIMMS_NDVI().run()
+    GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
+    # Precipitation().run()
+    # VPD().run()
     # CCI_SM().run()
     # Terraclimate().run()
-    GLC2000().run()
+    # GLC2000().run()
     # CCI_SM().run()
     # VODCA().run()
     # VOD_AMSRU().run()
