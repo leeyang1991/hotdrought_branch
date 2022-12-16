@@ -2,6 +2,8 @@
 from analysis import *
 result_root_this_script = join(results_root, 'statistic')
 global_drought_type_list = ['normal-drought', 'hot-drought']
+global_ELI_class = ['Energy-Limited', 'Water-Limited']
+global_AI_class = ['Humid', 'Arid']
 
 
 class Dataframe_func:
@@ -852,18 +854,110 @@ class Rt_Rs_change_overtime:
                     # plt.show()
 
 
-class Drought_evnets_progress:
+class Drought_evnets_proess:
     '''
-    introduce NDVI, CSIF, VOD, VPD, SM, ET, T, SPI, P
-    optimal Temperature
+    introduce NDVI, CSIF, VOD, VPD, SM, ET, T, P
+    optimal Temperature?
     '''
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Drought_evnets_proess', result_root_this_script, mode=2)
+        self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
         pass
 
     def run(self):
-
+        # self.gen_variables_in_drought_proess_monthly()
+        self.plot_variables_in_drought_proess_monthly()
         pass
+
+    def gen_variables_in_drought_proess_monthly(self):
+        outdir = join(self.this_class_arr, 'variables_in_drought_proess_monthly')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'dataframe.df')
+        var_list = self.var_list
+        df = GLobal_var().load_df()
+        # gs_dict = Growing_season().longterm_growing_season()
+        year_list = list(range(global_start_year, global_end_year + 1))
+        for var in var_list:
+            spatial_dict = GLobal_var().load_data(var)
+            spatial_dict_gs_monthly = {}
+            for pix in tqdm(spatial_dict,desc=f'monthly gs {var}'):
+                vals = spatial_dict[pix]
+                vals_gs_reshape = np.reshape(vals,(-1,12))
+                vals_gs_dict = dict(zip(year_list,vals_gs_reshape))
+                spatial_dict_gs_monthly[pix] = vals_gs_dict
+            flatten_vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{var}'):
+                pix = row['pix']
+                if not pix in spatial_dict_gs_monthly:
+                    flatten_vals_list.append(np.nan)
+                    continue
+                year = row['drought_year']
+                year = int(year)
+                pre_year_list = list(range(year-4,year))
+                post_year_list = list(range(year+1,year+5))
+                all_year_list = pre_year_list + [year] + post_year_list
+                all_vals_list = []
+                for year_i in all_year_list:
+                    if not year_i in spatial_dict_gs_monthly[pix]:
+                        all_vals_list.append([np.nan]*12)
+                        continue
+                    vals = spatial_dict_gs_monthly[pix][year_i]
+                    all_vals_list.append(vals)
+                all_vals_list = np.array(all_vals_list)
+                all_vals_list_flat = all_vals_list.flatten()
+                flatten_vals_list.append(all_vals_list_flat)
+            df[f'{var}_monthly'] = flatten_vals_list
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+
+    def plot_variables_in_drought_proess_monthly(self):
+        outdir = join(self.this_class_png, 'variables_in_drought_proess_monthly')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
+        cols = self.var_list
+        ltd_var = 'ELI_class'
+        limited_area_list = global_ELI_class
+        drought_type_list = global_drought_type_list
+        drought_type_color = {'normal-drought':'b','hot-drought':'r'}
+        df = T.load_df(dff)
+        for ltd in limited_area_list:
+            df_ltd = df[df[ltd_var] == ltd]
+            for col in cols:
+                fname = f'{ltd}_{col}'
+                print(fname)
+                outf = join(outdir, f'{fname}.png')
+                plt.figure(figsize=(10, 4))
+                for drt in drought_type_list:
+                    df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                    vals = df_drt[f'{col}_monthly'].tolist()
+                    vals = np.array(vals)
+                    vals_clean = []
+                    for val in vals:
+                        if type(val) == float:
+                            continue
+                        vals_clean.append(val)
+                    vals_clean = np.array(vals_clean)
+                    vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
+                    # vals_err = np.nanstd(vals_clean,axis=0)
+                    vals_mean = np.nanmean(vals_clean,axis=0)
+                    date_list = []
+                    for year in range(1996,2005):
+                        for month in range(1,13):
+                            date = datetime.datetime(year,month,1)
+                            date_list.append(date)
+                    plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
+                    plt.plot(date_list,vals_mean)
+                    plt.title(fname)
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                plt.legend()
+                # plt.show()
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # exit()
+
 
 class Rt_Rs_relationship:
     '''
@@ -884,7 +978,8 @@ def main():
     # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
-    Rt_Rs_change_overtime().run()
+    # Rt_Rs_change_overtime().run()
+    Drought_evnets_proess().run()
     pass
 
 
