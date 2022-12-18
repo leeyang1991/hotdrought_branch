@@ -1,67 +1,11 @@
 # coding=utf-8
-import xarray as xr
 from __init__ import *
+import analysis
+import xarray as xr
 import climate_indices
 from climate_indices import compute
 from climate_indices import indices
-import analysis
-
-land_tif = join(this_root,'conf/land.tif')
-
-class Meta_information:
-
-    def __init__(self):
-        pass
-
-    def path(self,year_range='1982-2015'):
-        vars_info_dic = {
-            'SPEI': {
-            'path':join(data_root, 'SPEI/per_pix_clean',year_range),
-            'path_type':'multi-files',
-            },
-            'CCI-SM': {
-                'path': join(data_root, f'CCI-SM/detrend/{year_range}/CCI-SM.npy'),
-                'path_type': 'file',
-            },
-            'SPI': {
-                'path': join(data_root, 'CRU_precip/per_pix_spi',year_range),
-                'path_type': 'multi-files',
-            },
-            'NDVI': {
-                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean_anomaly_detrend',year_range),
-                'path_type': 'dir',
-            },
-            'NDVI_origin': {
-                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean', year_range),
-                'path_type': 'dir',
-            },
-            'Temperature': {
-                'path': join(data_root, f'CRU_tmp/detrend/{year_range}/temp.npy'),
-                'path_type': 'file',
-            },
-            'Precipitation': {
-                'path': join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy'),
-                'path_type': 'file',
-            },
-            'Radiation': {
-                'path': join(data_root, f'Terraclimate/srad/detrend/{year_range}/srad.npy'),
-                'path_type': 'file',
-            },
-            'Terra_ET': {
-                'path': join(data_root, f'Terraclimate/aet/detrend/{year_range}/aet.npy'),
-                'path_type': 'file',
-            },
-            'GLEAM_ET': {
-                'path': join(data_root, f'GLEAM_ET/detrend/{year_range}/GLEAM_ET.npy'),
-                'path_type': 'file',
-            },
-            'VPD': {
-                'path': join(data_root, f'VPD/detrend/{year_range}/VPD.npy'),
-                'path_type': 'file',
-            },
-        }
-        return vars_info_dic
-
+from meta_info import *
 
 class GIMMS_NDVI:
 
@@ -506,27 +450,6 @@ class GLC2000:
         arr[np.isnan(arr)]=20
         dict_new = DIC_and_TIF().spatial_arr_to_dic(arr)
         T.save_npy(dict_new,lc_dict_f)
-
-    def reclass_tif(self):
-        f = join(self.datadir,'reclass_lc_dic2.npy')
-        reclass_dic = T.load_npy(f)
-        dict_all = {'lc1':reclass_dic}
-        df = T.spatial_dics_to_df(dict_all)
-        df = remote_sensing.Dataframe_func(df).df
-        spatial_dict = T.df_to_spatial_dic(df,'lc1')
-        spatial_dict_digit = {}
-        lc_dict_digit = {'grass':1,
-                         'forest':2,
-                         'shrubs':3,
-                         'crop':4}
-        for pix in spatial_dict:
-            lc = spatial_dict[pix]
-            lc_digit = lc_dict_digit[lc]
-            spatial_dict_digit[pix] = lc_digit
-        # arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_digit)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_digit,join(self.datadir,'reclass_lc_dic2.tif'))
-
-        pass
 
 
 class CCI_SM:
@@ -1082,7 +1005,7 @@ def main():
     # Terraclimate().run()
     # ERA().run()
     # SPI().run()
-    GLEAM_ET().run()
+    # GLEAM_ET().run()
 
     pass
 

@@ -1,5 +1,6 @@
 # coding=utf-8
-from preprocess import *
+from __init__ import *
+from meta_info import *
 import xymap
 import statistic
 result_root_this_script = join(results_root, 'analysis')
@@ -58,70 +59,48 @@ class Water_energy_limited_area:
         pass
 
     def run(self):
-        # self.kendall_corr()
+        self.kendall_corr_all_vars()
         # self.significant_pix_p()
-        self.significant_pix_r()
+        # self.significant_pix_r()
         # self.Ecosystem_Limited_Index()
         pass
 
-    def kendall_corr(self):
-        outdir = join(self.this_class_arr, 'kendall_corr')
+
+    def kendall_corr_all_vars(self):
+        outdir = join(self.this_class_arr,'kendall_corr')
+        var_1 = 'GLEAM_ET'
+        var_2 = 'CCI-SM'
+        var_3 = 'Temperature'
+        self.kendall_corr(var_1,var_2,outdir)
+        self.kendall_corr(var_1,var_3,outdir)
+
+        pass
+
+
+    def kendall_corr(self,var_1,var_2,outdir):
         T.mk_dir(outdir)
-        outf = join(outdir, 'kendall_corr.df')
-        SM_spatial_dict = GLobal_var().load_data('CCI-SM')
-        ET_spatial_dict = GLobal_var().load_data('ET')
-        Rn_spatial_dict = GLobal_var().load_data('Radiation')
-        Temp_spatial_dict = GLobal_var().load_data('Temperature')
-
-        # SM and ET
-        SM_ET_spatial_dict_corr = {}
-        SM_ET_spatial_dict_corr_p = {}
-        for pix in tqdm(SM_spatial_dict):
-            if not pix in ET_spatial_dict:
+        outf = join(outdir, f'{var_1}_{var_2}.df')
+        spatial_dict_1 = GLobal_var().load_data(var_1)
+        spatial_dict_2 = GLobal_var().load_data(var_2)
+        spatial_dict_corr = {}
+        spatial_dict_corr_p = {}
+        for pix in tqdm(spatial_dict_1):
+            if not pix in spatial_dict_2:
                 continue
-            SM = SM_spatial_dict[pix]
-            ET = ET_spatial_dict[pix]
-            r,p = T.nan_correlation(SM,ET,method='kendall')
-            SM_ET_spatial_dict_corr[pix] = r
-            SM_ET_spatial_dict_corr_p[pix] = p
-
-        # Rn and ET
-        Rn_ET_spatial_dict_corr = {}
-        Rn_ET_spatial_dict_corr_p = {}
-        for pix in tqdm(Rn_spatial_dict):
-            if not pix in ET_spatial_dict:
-                continue
-            Rn = Rn_spatial_dict[pix]
-            ET = ET_spatial_dict[pix]
-            r,p = T.nan_correlation(Rn,ET,method='kendall')
-            Rn_ET_spatial_dict_corr[pix] = r
-            Rn_ET_spatial_dict_corr_p[pix] = p
-
-        # Temperature and ET
-        Temp_ET_spatial_dict_corr = {}
-        Temp_ET_spatial_dict_corr_p = {}
-        for pix in tqdm(Temp_spatial_dict):
-            if not pix in ET_spatial_dict:
-                continue
-            Temp = Temp_spatial_dict[pix]
-            ET = ET_spatial_dict[pix]
-            r,p = T.nan_correlation(Temp,ET,method='kendall')
-            Temp_ET_spatial_dict_corr[pix] = r
-            Temp_ET_spatial_dict_corr_p[pix] = p
-
+            val1 = spatial_dict_1[pix]
+            val2 = spatial_dict_2[pix]
+            r,p = T.nan_correlation(val1,val2,method='kendall')
+            spatial_dict_corr[pix] = r
+            spatial_dict_corr_p[pix] = p
 
         spatial_dict_all = {
-            'ET_SM_r':SM_ET_spatial_dict_corr,
-            'ET_SM_p':SM_ET_spatial_dict_corr_p,
-            'ET_Rn_r':Rn_ET_spatial_dict_corr,
-            'ET_Rn_p':Rn_ET_spatial_dict_corr_p,
-            'ET_Temp_r':Temp_ET_spatial_dict_corr,
-            'ET_Temp_p':Temp_ET_spatial_dict_corr_p,
+            f'{var_1}_{var_2}_r':spatial_dict_corr,
+            f'{var_1}_{var_2}_p':spatial_dict_corr_p,
         }
-
         df = T.spatial_dics_to_df(spatial_dict_all)
         T.save_df(df,outf)
-        T.df_to_excel(df,join(outdir,'kendall_corr.xlsx'))
+        T.df_to_excel(df,outf)
+
 
     def Ecosystem_Limited_Index(self):
         outdir = join(self.this_class_tif,'ELI')
@@ -1087,12 +1066,12 @@ class Resistance_Resilience:
 
 
 def main():
-    # Water_energy_limited_area().run()
+    Water_energy_limited_area().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
-    Resistance_Resilience().run()
+    # Resistance_Resilience().run()
     pass
 
 

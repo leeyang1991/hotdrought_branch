@@ -69,14 +69,7 @@ import psutil
 # import pingouin
 from matplotlib.colors import LinearSegmentedColormap
 
-# import rpy2
-
-this_root = '/Volumes/SSD1T/hotdrought_branch/'
-data_root = this_root + 'data/'
-results_root = this_root + 'results/'
-temp_root = this_root + 'temp/'
 # results_root_main_flow = this_root + 'main_flow_results/'
-
 '''
 pip install xgboost
 No such file or directory: 'cmake'

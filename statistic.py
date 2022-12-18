@@ -1,9 +1,8 @@
 # coding=utf-8
+from __init__ import *
 from analysis import *
+from meta_info import *
 result_root_this_script = join(results_root, 'statistic')
-global_drought_type_list = ['normal-drought', 'hot-drought']
-global_ELI_class = ['Energy-Limited', 'Water-Limited']
-global_AI_class = ['Humid', 'Arid']
 
 
 class Dataframe_func:
