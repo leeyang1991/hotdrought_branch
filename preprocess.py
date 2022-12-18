@@ -47,8 +47,12 @@ class Meta_information:
                 'path': join(data_root, f'Terraclimate/srad/detrend/{year_range}/srad.npy'),
                 'path_type': 'file',
             },
-            'ET': {
+            'Terra_ET': {
                 'path': join(data_root, f'Terraclimate/aet/detrend/{year_range}/aet.npy'),
+                'path_type': 'file',
+            },
+            'GLEAM_ET': {
+                'path': join(data_root, f'GLEAM_ET/detrend/{year_range}/GLEAM_ET.npy'),
                 'path_type': 'file',
             },
             'VPD': {
@@ -946,8 +950,124 @@ class Terraclimate:
         #         time.sleep(5)
 
 
+class GLEAM_ET:
+
+    def __init__(self):
+        self.datadir = data_root + 'GLEAM_ET/'
+        T.mk_dir(self.datadir)
+        pass
+
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.resample()
+        # self.tif_to_perpix_1982_2015()
+        # self.anomaly()
+        self.detrend()
+        pass
+
+
+    def nc_to_tif(self):
+        f = join(self.datadir,'nc/Et_1980-2020_GLEAM_v3.5a_MO.nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        ncin = Dataset(f, 'r')
+        ncin_xarr = xr.open_dataset(f)
+        # print(ncin.variables)
+        # exit()
+        lat = ncin['lat']
+        lon = ncin['lon']
+        pixelWidth = lon[1] - lon[0]
+        pixelHeight = lat[1] - lat[0]
+        longitude_start = lon[0]
+        latitude_start = lat[0]
+        time_obj = ncin.variables['time']
+        start = datetime.datetime(1900, 1, 1)
+        # print(time)
+        # for t in time:
+        #     print(t)
+        # exit()
+        flag = 0
+        for i in tqdm(range(len(time_obj))):
+            # print(i)
+            flag += 1
+            # print(time[i])
+            date = start + datetime.timedelta(days=int(time_obj[i]))
+            year = str(date.year)
+            # exit()
+            month = '%02d' % date.month
+            day = '%02d' % date.day
+            date_str = year + month
+            newRasterfn = join(outdir,date_str + '.tif')
+            if os.path.isfile(newRasterfn):
+                continue
+            # print(date_str)
+            # exit()
+            # if not date_str[:4] in valid_year:
+            #     continue
+            # print(date_str)
+            # exit()
+            # arr = ncin.variables['pet'][i]
+            arr = ncin_xarr.variables['Et'][i]
+            arr = np.array(arr)
+            arr[arr<0] = np.nan
+            arr = arr.T
+            # plt.imshow(arr)
+            # plt.show()
+            # print(arr)
+            # grid = arr < 99999
+            # arr[np.logical_not(grid)] = -999999
+            ToRaster().array2raster(newRasterfn, longitude_start, latitude_start, pixelWidth, pixelHeight, arr)
+            # grid = np.ma.masked_where(grid>1000,grid)
+            # DIC_and_TIF().arr_to_tif(arr,newRasterfn)
+            # plt.imshow(arr,'RdBu')
+            # plt.colorbar()
+            # plt.show()
+            # nc_dic[date_str] = arr
+            # exit()
+
+        pass
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05_deg')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,res=0.5)
+        pass
+
+    def tif_to_perpix_1982_2015(self):
+        fdir = join(self.datadir,'tif_05_deg')
+        outdir = join(self.datadir,'perpix/1982-2015')
+        T.mk_dir(outdir,force=True)
+        selected_tif_list = []
+        for y in range(1982,2016):
+            for m in range(1,13):
+                f = '{}{:02d}.tif'.format(y,m)
+                selected_tif_list.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,selected_tif_list)
+
+    def anomaly(self):
+        fdir = join(self.datadir, 'perpix/1982-2015')
+        outdir = join(self.datadir, 'anomaly/1982-2015')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+        pass
+
+    def detrend(self):
+        fdir = join(self.datadir, 'anomaly/1982-2015')
+        outdir = join(self.datadir, 'detrend/1982-2015')
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        outf = join(outdir,'GLEAM_ET.npy')
+        T.save_npy(spatial_dict_detrend,outf)
+        pass
+
 def main():
-    GIMMS_NDVI().run()
+    # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
@@ -962,6 +1082,7 @@ def main():
     # Terraclimate().run()
     # ERA().run()
     # SPI().run()
+    GLEAM_ET().run()
 
     pass
 
