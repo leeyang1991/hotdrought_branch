@@ -14,9 +14,9 @@ class GIMMS_NDVI:
         pass
 
     def run(self):
-        self.pick_annual_gs_NDVI_origin()
-        self.pick_annual_gs_NDVI()
-
+        # self.pick_annual_gs_NDVI_origin()
+        # self.pick_annual_gs_NDVI()
+        self.every_month()
 
     def pick_annual_gs_NDVI_origin(self):
         var_name = 'NDVI_origin'
@@ -54,6 +54,35 @@ class GIMMS_NDVI:
             annual_spatial_dict[pix] = vals_annual
         T.save_npy(annual_spatial_dict, outf)
 
+    def every_month(self):
+        # fdir = join(self.datadir,'per_pix_clean_anomaly_detrend',year_range)
+        fdir = join(self.datadir,'per_pix_clean',year_range)
+        outdir = join(self.datadir,'every_month',year_range)
+        T.mkdir(outdir,force=True)
+
+        spatial_dict = T.load_npy_dir(fdir)
+        month_list = range(1,13)
+
+        for mon in month_list:
+            spatial_dict_mon = {}
+            for pix in tqdm(spatial_dict,desc=f'{mon}'):
+                r,c = pix
+                if r > 180:
+                    continue
+                vals = spatial_dict[pix]
+                val_mon = T.monthly_vals_to_annual_val(vals,[mon])
+                val_mon[val_mon<-10] = -999999
+                num = T.count_num(val_mon,-999999)
+                if num > 10:
+                    continue
+                val_mon[val_mon<-10] = np.nan
+                if T.is_all_nan(val_mon):
+                    continue
+                spatial_dict_mon[pix] = val_mon
+            outf = join(outdir,f'{mon:02d}')
+            T.save_npy(spatial_dict_mon,outf)
+
+
     def check_pix(self):
         # fdir = join(self.datadir,'per_pix_clean_anomaly_detrend')
         # spatial_dict = T.load_npy_dir(fdir)
@@ -76,13 +105,48 @@ class SPEI:
         pass
 
     def run(self):
-        self.clean()
+        # self.nc_to_tif()
+        # self.per_pix()
+        # self.clean()
+        self.every_month()
         pass
 
-    def clean(self):
-        fdir = join(self.datadir,'per_pix_1982_2015')
-        outdir = join(self.datadir,'per_pix_1982_2015_clean')
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        params = []
+        for f in T.listdir(fdir):
+            scale = f.split('.')[0]
+            outdir_i = join(outdir,scale)
+            T.mk_dir(outdir_i,force=True)
+            fpath = join(fdir,f)
+            param = [fpath,'spei',outdir_i]
+            # self.kernel_nc_to_tif(param)
+            # exit()
+            params.append(param)
+        MULTIPROCESS(self.kernel_nc_to_tif,params).run(process=7)
+
+    def kernel_nc_to_tif(self,param):
+        fpath, var, outdir_i = param
+        self.nc_to_tif_func(fpath, var, outdir_i)
+        pass
+
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'per_pix')
         T.mk_dir(outdir)
+        for folder in T.listdir(fdir):
+            print(folder)
+            fdir_i = join(fdir,folder)
+            outdir_i = join(outdir,year_range,folder)
+            T.mk_dir(outdir_i,force=True)
+            Pre_Process().data_transform(fdir_i, outdir_i)
+
+    def clean(self):
+        fdir = join(self.datadir,'per_pix',year_range)
+        outdir = join(self.datadir,'per_pix_clean',year_range)
+        T.mk_dir(outdir,force=True)
 
         for scale in T.listdir(fdir):
             outf = join(outdir,scale)
@@ -96,15 +160,166 @@ class SPEI:
                 vals = spatial_dict[pix]
                 vals = np.array(vals)
                 vals[vals<-999] = np.nan
+                vals[vals>999] = np.nan
                 if T.is_all_nan(vals):
-                    continue
-                # a,b,r,p = T.nan_line_fit(list(range(len(vals))), vals)
-                # spatial_dict[pix] = a
-                mean = np.mean(vals)
-                if np.isnan(mean):
                     continue
                 spatial_dict_out[pix] = vals
             T.save_npy(spatial_dict_out, outf)
+
+    def every_month(self):
+        fdir = join(self.datadir,'per_pix_clean',year_range)
+        outdir = join(self.datadir,'every_month',year_range)
+        params_list = []
+        for f in T.listdir(fdir):
+            scale = f.split('.')[0]
+            outdir_i = join(outdir, scale)
+            T.mkdir(outdir_i, force=True)
+            param = [fdir,f,outdir_i]
+            # self.kernel_every_month(param)
+            params_list.append(param)
+        MULTIPROCESS(self.kernel_every_month,params_list).run(process=7)
+
+    def kernel_every_month(self,params):
+        fdir,f,outdir_i = params
+        fpath = join(fdir, f)
+        spatial_dict = T.load_npy(fpath)
+        month_list = range(1, 13)
+        for mon in month_list:
+            spatial_dict_mon = {}
+            for pix in tqdm(spatial_dict, desc=f'{mon}'):
+                r, c = pix
+                if r > 180:
+                    continue
+                vals = spatial_dict[pix]
+                val_mon = T.monthly_vals_to_annual_val(vals, [mon])
+                val_mon[val_mon < -10] = -999999
+                num = T.count_num(val_mon, -999999)
+                if num > 10:
+                    continue
+                val_mon[val_mon < -10] = np.nan
+                if T.is_all_nan(val_mon):
+                    continue
+                spatial_dict_mon[pix] = val_mon
+            outf = join(outdir_i, f'{mon:02d}')
+            T.save_npy(spatial_dict_mon, outf)
+        pass
+
+    def nc_to_tif_func(self, fname, var_name, outdir):
+        try:
+            ncin = Dataset(fname, 'r')
+            print(ncin.variables.keys())
+
+        except:
+            raise UserWarning('File not supported: ' + fname)
+        try:
+            lat = ncin.variables['lat'][:]
+            lon = ncin.variables['lon'][:]
+        except:
+            try:
+                lat = ncin.variables['latitude'][:]
+                lon = ncin.variables['longitude'][:]
+            except:
+                try:
+                    lat = ncin.variables['lat_FULL'][:]
+                    lon = ncin.variables['lon_FULL'][:]
+                except:
+                    raise UserWarning('lat or lon not found')
+        shape = np.shape(lat)
+        try:
+            time = ncin.variables['time_counter'][:]
+            basetime_str = ncin.variables['time_counter'].units
+        except:
+            time = ncin.variables['time'][:]
+            basetime_str = ncin.variables['time'].units
+
+        basetime_unit = basetime_str.split('since')[0]
+        basetime_unit = basetime_unit.strip()
+        print(basetime_unit)
+        print(basetime_str)
+        if basetime_unit == 'days':
+            timedelta_unit = 'days'
+        elif basetime_unit == 'years':
+            timedelta_unit = 'years'
+        elif basetime_unit == 'month':
+            timedelta_unit = 'month'
+        elif basetime_unit == 'months':
+            timedelta_unit = 'month'
+        elif basetime_unit == 'seconds':
+            timedelta_unit = 'seconds'
+        elif basetime_unit == 'hours':
+            timedelta_unit = 'hours'
+        else:
+            raise Exception('basetime unit not supported')
+        basetime = basetime_str.strip(f'{timedelta_unit} since ')
+        try:
+            basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d')
+        except:
+            try:
+                basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M:%S')
+            except:
+                try:
+                    basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M:%S.%f')
+                except:
+                    try:
+                        basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M')
+                    except:
+                        try:
+                            basetime = datetime.datetime.strptime(basetime, '%Y-%m')
+                        except:
+                            raise UserWarning('basetime format not supported')
+        data = ncin.variables[var_name]
+        if len(shape) == 2:
+            xx, yy = lon, lat
+        else:
+            xx, yy = np.meshgrid(lon, lat)
+        for time_i in tqdm(range(len(time))):
+            if basetime_unit == 'days':
+                date = basetime + datetime.timedelta(days=int(time[time_i]))
+            elif basetime_unit == 'years':
+                date1 = basetime.strftime('%Y-%m-%d')
+                base_year = basetime.year
+                date2 = f'{int(base_year + time[time_i])}-01-01'
+                delta_days = Tools().count_days_of_two_dates(date1, date2)
+                date = basetime + datetime.timedelta(days=delta_days)
+            elif basetime_unit == 'month' or basetime_unit == 'months':
+                date1 = basetime.strftime('%Y-%m-%d')
+                base_year = basetime.year
+                base_month = basetime.month
+                date2 = f'{int(base_year + time[time_i] // 12)}-{int(base_month + time[time_i] % 12)}-01'
+                delta_days = Tools().count_days_of_two_dates(date1, date2)
+                date = basetime + datetime.timedelta(days=delta_days)
+            elif basetime_unit == 'seconds':
+                date = basetime + datetime.timedelta(seconds=int(time[time_i]))
+            elif basetime_unit == 'hours':
+                date = basetime + datetime.timedelta(hours=int(time[time_i]))
+            else:
+                raise Exception('basetime unit not supported')
+            time_str = time[time_i]
+            mon = date.month
+            year = date.year
+            if year < 1982:
+                continue
+            # print(year)
+            # exit()
+            day = date.day
+            outf_name = f'{year}{mon:02d}{day:02d}.tif'
+            outpath = join(outdir, outf_name)
+            if isfile(outpath):
+                continue
+            arr = data[time_i]
+            arr = np.array(arr)
+            lon_list = xx.flatten()
+            lat_list = yy.flatten()
+            val_list = arr.flatten()
+            lon_list[lon_list > 180] = lon_list[lon_list > 180] - 360
+            df = pd.DataFrame()
+            df['lon'] = lon_list
+            df['lat'] = lat_list
+            df['val'] = val_list
+            lon_list_new = df['lon'].tolist()
+            lat_list_new = df['lat'].tolist()
+            val_list_new = df['val'].tolist()
+            DIC_and_TIF().lon_lat_val_to_tif(lon_list_new, lat_list_new, val_list_new, outpath)
 
 class SPI:
     def __init__(self):
@@ -1111,13 +1326,13 @@ class ERA_SM:
 
 def main():
     # GIMMS_NDVI().run()
-    # SPEI().run()
+    SPEI().run()
     # SPI().run()
     # TMP().run()
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
-    ERA_SM().run()
+    # ERA_SM().run()
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
