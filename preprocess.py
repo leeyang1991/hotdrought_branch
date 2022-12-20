@@ -1,6 +1,5 @@
 # coding=utf-8
 from __init__ import *
-import analysis
 import xarray as xr
 import climate_indices
 from climate_indices import compute
@@ -19,8 +18,9 @@ class GIMMS_NDVI:
         self.every_month()
 
     def pick_annual_gs_NDVI_origin(self):
+        import analysis
         var_name = 'NDVI_origin'
-        outdir = join(self.datadir, 'per_pix_clean',analysis.year_range+'_gs')
+        outdir = join(self.datadir, 'per_pix_clean',year_range+'_gs')
         gs_dict = analysis.Growing_season().longterm_growing_season()
         spatial_dict = analysis.GLobal_var().load_data(var_name)
         T.mkdir(outdir)
@@ -37,8 +37,9 @@ class GIMMS_NDVI:
         T.save_npy(annual_spatial_dict, outf)
 
     def pick_annual_gs_NDVI(self):
+        import analysis
         var_name = 'NDVI'
-        outdir = join(self.datadir, 'per_pix_clean_anomaly_detrend',analysis.year_range+'_gs')
+        outdir = join(self.datadir, 'per_pix_clean_anomaly_detrend',year_range+'_gs')
         gs_dict = analysis.Growing_season().longterm_growing_season()
         spatial_dict = analysis.GLobal_var().load_data(var_name)
         T.mkdir(outdir)
@@ -373,7 +374,7 @@ class SPI:
 
     def pick_SPI_year_range(self):
         fdir = join(self.datadir,'per_pix_spi','1930-2020')
-        outdir = join(self.datadir,'per_pix_spi',analysis.year_range)
+        outdir = join(self.datadir,'per_pix_spi',year_range)
         T.mk_dir(outdir)
         start_year = 1930
         end_year = 2020
@@ -405,7 +406,7 @@ class SPI:
 
 
     def check_spi(self):
-        fdir = join(self.datadir,'per_pix_spi',analysis.year_range)
+        fdir = join(self.datadir,'per_pix_spi',year_range)
         for f in T.listdir(fdir):
             fpath = join(fdir,f)
             spatial_dict = T.load_npy(fpath)
@@ -433,7 +434,7 @@ class Precipitation:
 
     def pick_year_range(self):
         fdir = join(self.datadir,'per_pix','1930-2020')
-        outdir = join(self.datadir,'per_pix',analysis.year_range)
+        outdir = join(self.datadir,'per_pix',year_range)
         T.mk_dir(outdir)
         outf = join(outdir,'precip')
         start_year = 1930
@@ -468,8 +469,8 @@ class Precipitation:
         T.save_npy(picked_vals_dic, outf)
 
     def anomaly(self):
-        fdir = join(self.datadir,'per_pix',analysis.year_range)
-        outdir = join(self.datadir,'anomaly',analysis.year_range)
+        fdir = join(self.datadir,'per_pix',year_range)
+        outdir = join(self.datadir,'anomaly',year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
@@ -483,8 +484,8 @@ class Precipitation:
         T.save_npy(spatial_dict_detrend,outf)
 
     def check_per_pix(self):
-        # fdir = join(self.datadir, 'per_pix', analysis.year_range)
-        fdir = join(self.datadir, 'anomaly', analysis.year_range)
+        # fdir = join(self.datadir, 'per_pix', year_range)
+        fdir = join(self.datadir, 'anomaly', year_range)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict1 = {}
         for pix in tqdm(spatial_dict):
@@ -525,8 +526,8 @@ class TMP:
 
 
     def check_per_pix(self):
-        # fdir = join(self.datadir, 'per_pix', analysis.year_range)
-        fdir = join(self.datadir, 'anomaly', analysis.year_range)
+        # fdir = join(self.datadir, 'per_pix', year_range)
+        fdir = join(self.datadir, 'anomaly', year_range)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict1 = {}
         for pix in tqdm(spatial_dict):
@@ -559,15 +560,15 @@ class VPD:
         pass
 
     def anomaly(self):
-        fdir = join(self.datadir,'per_pix',analysis.year_range)
-        outdir = join(self.datadir,'anomaly',analysis.year_range)
+        fdir = join(self.datadir,'per_pix',year_range)
+        outdir = join(self.datadir,'anomaly',year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
         pass
 
     def detrend(self):
-        fdir = join(self.datadir,'anomaly',analysis.year_range)
-        outdir = join(self.datadir,'detrend',analysis.year_range)
+        fdir = join(self.datadir,'anomaly',year_range)
+        outdir = join(self.datadir,'detrend',year_range)
         T.mk_dir(outdir,force=True)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict_detrend = T.detrend_dic(spatial_dict)
@@ -575,7 +576,7 @@ class VPD:
         T.save_npy(spatial_dict_detrend,outf)
 
     def check_per_pix(self):
-        fdir = join(self.datadir, 'per_pix',analysis.year_range)
+        fdir = join(self.datadir, 'per_pix',year_range)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict1 = {}
         for pix in tqdm(spatial_dict):
