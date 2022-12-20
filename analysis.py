@@ -4,11 +4,7 @@ from meta_info import *
 import xymap
 import statistic
 result_root_this_script = join(results_root, 'analysis')
-year_range = '1982-2015'
-global_start_year,global_end_year = year_range.split('-')
-global_start_year = int(global_start_year)
-global_end_year = int(global_end_year)
-data_path_dict = Meta_information().path(year_range)
+
 
 class GLobal_var:
     def __init__(self):
@@ -59,23 +55,23 @@ class Water_energy_limited_area:
         pass
 
     def run(self):
-        self.kendall_corr_all_vars()
-        # self.significant_pix_p()
-        # self.significant_pix_r()
+        # self.kendall_corr_all_vars()
+        self.Ecosystem_Limited_Index_p()
         # self.Ecosystem_Limited_Index()
         pass
 
 
     def kendall_corr_all_vars(self):
         outdir = join(self.this_class_arr,'kendall_corr')
-        var_1 = 'GLEAM_ET'
-        var_2 = 'CCI-SM'
+        var_1 = 'GLEAM-ET'
+        var_21 = 'ERA-SM'
+        var_22 = 'CCI-SM'
         var_3 = 'Temperature'
-        self.kendall_corr(var_1,var_2,outdir)
-        self.kendall_corr(var_1,var_3,outdir)
-
-        pass
-
+        var_31 = 'Radiation'
+        # self.kendall_corr(var_1,var_21,outdir)
+        # self.kendall_corr(var_1,var_22,outdir)
+        # self.kendall_corr(var_1,var_3,outdir)
+        self.kendall_corr(var_1,var_31,outdir)
 
     def kendall_corr(self,var_1,var_2,outdir):
         T.mk_dir(outdir)
@@ -103,74 +99,75 @@ class Water_energy_limited_area:
 
 
     def Ecosystem_Limited_Index(self):
+        var_1 = 'GLEAM-ET'
+        var_21 = 'ERA-SM'
+        var_22 = 'CCI-SM'
+        # var_3 = 'Temperature'
+        var_31 = 'Radiation'
+        fdir = join(self.this_class_arr,'kendall_corr')
         outdir = join(self.this_class_tif,'ELI')
         T.mk_dir(outdir)
-        dff = join(self.this_class_arr,'kendall_corr','kendall_corr.df')
-        df = T.load_df(dff)
-        df = df.dropna()
-        df['ELI_Rn_r'] = df['ET_SM_r'] - df['ET_Rn_r']
-        df['ELI_Temp_r'] = df['ET_SM_r'] - df['ET_Temp_r']
-        spatial_dict_Rn_r = T.df_to_spatial_dic(df,'ELI_Rn_r')
-        spatial_dict_Temp_r = T.df_to_spatial_dic(df,'ELI_Temp_r')
-        outf_Rn_r = join(outdir,'ELI_Rn_r.tif')
-        outf_Temp_r = join(outdir,'ELI_Temp_r.tif')
+        # outf = join(outdir, f'{var_1}_{var_21}_{var_3}.tif')
+        outf = join(outdir, f'{var_1}_{var_21}_{var_31}.tif')
+        ELI_equation = 'ELI = corr(ET,SM) - corr(ET,T)'
+        dff1 = join(fdir,f'{var_1}_{var_21}.df')
+        # dff2 = join(fdir,f'{var_1}_{var_3}.df')
+        dff2 = join(fdir,f'{var_1}_{var_31}.df')
+        df1 = T.load_df(dff1)
+        df2 = T.load_df(dff2)
+        spatial_dict1 = T.df_to_spatial_dic(df1,f'{var_1}_{var_21}_r')
+        # spatial_dict2 = T.df_to_spatial_dic(df2,f'{var_1}_{var_3}_r')
+        spatial_dict2 = T.df_to_spatial_dic(df2,f'{var_1}_{var_31}_r')
 
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Rn_r,outf_Rn_r)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_r,outf_Temp_r)
+        ELI_spatial_dict = {}
+        for pix in tqdm(spatial_dict1):
+            if not pix in spatial_dict2:
+                continue
+            val1 = spatial_dict1[pix]
+            val2 = spatial_dict2[pix]
+            ELI = val1 - val2
+            ELI_spatial_dict[pix] = ELI
+
+        DIC_and_TIF().pix_dic_to_tif(ELI_spatial_dict,outf)
 
 
-    def significant_pix_p(self):
-        outdir = join(self.this_class_tif,'significant_pix')
+    def Ecosystem_Limited_Index_p(self):
+        var_1 = 'GLEAM-ET'
+        var_21 = 'ERA-SM'
+        var_22 = 'CCI-SM'
+        var_3 = 'Temperature'
+        # var_31 = 'Radiation'
+        fdir = join(self.this_class_arr,'kendall_corr')
+        outdir = join(self.this_class_tif,'ELI')
         T.mk_dir(outdir)
-        dff = join(self.this_class_arr,'kendall_corr','kendall_corr.df')
-        df = T.load_df(dff)
-        T.print_head_n(df,5)
-        ELI_Rn_significance_list = []
-        ELI_Temp_significance_list = []
-        for i,row in df.iterrows():
-            if row['ET_SM_p']>0.01 and row['ET_Rn_p']>0.01:
-                ELI_Rn_significance_list.append(0)
+        # outf = join(outdir, f'{var_1}_{var_21}_{var_31}_p.tif')
+        outf = join(outdir, f'{var_1}_{var_21}_{var_3}_p.tif')
+        ELI_equation = 'ELI = corr(ET,SM) - corr(ET,T)'
+        dff1 = join(fdir,f'{var_1}_{var_21}.df')
+        dff2 = join(fdir,f'{var_1}_{var_3}.df')
+        # dff2 = join(fdir,f'{var_1}_{var_31}.df')
+        df1 = T.load_df(dff1)
+        df2 = T.load_df(dff2)
+        spatial_dict1 = T.df_to_spatial_dic(df1,f'{var_1}_{var_21}_p')
+        spatial_dict2 = T.df_to_spatial_dic(df2,f'{var_1}_{var_3}_p')
+        # spatial_dict2 = T.df_to_spatial_dic(df2,f'{var_1}_{var_31}_p')
+
+        ELI_spatial_dict = {}
+        for pix in tqdm(spatial_dict1):
+            if not pix in spatial_dict2:
+                continue
+            val1 = spatial_dict1[pix]
+            val2 = spatial_dict2[pix]
+            if val1 > 0.05 or val2 > 0.05:
+                ELI = 1
             else:
-                ELI_Rn_significance_list.append(1)
-            if row['ET_SM_p']>0.01 and row['ET_Temp_p']>0.01:
-                ELI_Temp_significance_list.append(0)
-            else:
-                ELI_Temp_significance_list.append(1)
-        df['ELI_Rn_significance'] = ELI_Rn_significance_list
-        df['ELI_Temp_significance'] = ELI_Temp_significance_list
+                ELI = 0
+            ELI_spatial_dict[pix] = ELI
 
-        spatial_dict_Rn_significance = T.df_to_spatial_dic(df,'ELI_Rn_significance')
-        spatial_dict_Temp_significance = T.df_to_spatial_dic(df,'ELI_Temp_significance')
+        DIC_and_TIF().pix_dic_to_tif(ELI_spatial_dict,outf)
 
-        outf_Rn_significance = join(outdir,'ELI_Rn_significance.tif')
-        outf_Temp_significance = join(outdir,'ELI_Temp_significance.tif')
 
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Rn_significance,outf_Rn_significance)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_significance,outf_Temp_significance)
 
-    def significant_pix_r(self):
-        outdir = join(self.this_class_tif,'significant_pix_r')
-        T.mk_dir(outdir)
-        dff = join(self.this_class_arr,'kendall_corr','kendall_corr.df')
-        df = T.load_df(dff)
-        T.print_head_n(df,5)
-        ELI_Temp_significance_list = []
-        for i,row in df.iterrows():
-            if row['ET_SM_r']<0.1 and row['ET_Temp_r']<0.1:
-                ELI_Temp_significance_list.append(0)
-            elif np.isnan(row['ET_SM_r']) or np.isnan(row['ET_Temp_r']):
-                ELI_Temp_significance_list.append(0)
-            else:
-                ELI_Temp_significance_list.append(1)
-        df['ELI_Temp_significance'] = ELI_Temp_significance_list
-
-        spatial_dict_Temp_significance = T.df_to_spatial_dic(df,'ELI_Temp_significance')
-
-        outf_Temp_significance = join(outdir,'ELI_Temp_significance.tif')
-
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_Temp_significance,outf_Temp_significance)
-
-        pass
 
 class Growing_season:
     def __init__(self):
@@ -899,7 +896,7 @@ class Resistance_Resilience:
 
     def cal_rt(self,df):
 
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI_origin')
+        NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
         gs_dict = Growing_season().longterm_growing_season()
         year_list = list(range(global_start_year,global_end_year+1))
         rt_list = []
@@ -936,7 +933,7 @@ class Resistance_Resilience:
     def cal_rs(self,df):
         post_n_list = [1,2,3,4]
         # post_n_list = [4]
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI_origin')
+        NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
         gs_dict = Growing_season().longterm_growing_season()
         year_list = list(range(global_start_year,global_end_year+1))
         for post_year in post_n_list:
@@ -982,7 +979,7 @@ class Resistance_Resilience:
         return df
 
     def rt_tif(self,df):
-        NDVI_dict = GLobal_var().load_data('NDVI_origin')
+        NDVI_dict = GLobal_var().load_data('NDVI-origin')
         outdir = join(self.this_class_tif, 'rt')
         T.mk_dir(outdir)
         drought_type_list = T.get_df_unique_val_list(df, 'drought_type')
