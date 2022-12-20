@@ -989,6 +989,126 @@ class GLEAM_ET:
         T.save_npy(spatial_dict_detrend,outf)
         pass
 
+class ERA_SM:
+
+    def __init__(self):
+        self.datadir = data_root + 'ERA-SM/'
+
+    def run(self):
+        # self.download_sm()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.clean()
+        # self.tif_to_perpix_1982_2015()
+        # self.anomaly()
+        # self.detrend()
+        self.check_cci_sm()
+        pass
+
+    def download_sm(self):
+        from ecmwfapi import ECMWFDataServer
+        server = ECMWFDataServer()
+        outdir = join(self.datadir,'nc')
+        outf = join(outdir,'ERA_SM.nc')
+        date_list = []
+        for y in range(1982, 2016):
+            for m in range(1, 13):
+                date = '{}{:02d}{:02d}'.format(y, m, 1)
+                date_list.append(date)
+        date_str = '/'.join(date_list)
+        # print date_str
+        # exit()
+        server.retrieve({
+            "class": "ei",
+            "dataset": "interim",
+            "date": date_str,
+            "expver": "1",
+            "grid": "0.25/0.25",
+            "levtype": "sfc",
+            "param": "39.128",
+            "stream": "moda",
+            "type": "an",
+            "target": outf,
+            "format": "netcdf",
+        })
+
+        pass
+
+    def nc_to_tif(self):
+        f = join(self.datadir, 'nc/ERA_025.nc')
+        outdir = join(self.datadir, 'tif')
+        T.mk_dir(outdir)
+        T.nc_to_tif(f,'swvl1',outdir)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,res=0.5)
+
+    def clean(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'tif_05_clean')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            if not f.endswith('.tif'):
+                continue
+            outpath = join(outdir,f)
+            array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+            array[array<=0] = np.nan
+            ToRaster().array2raster(outpath, originX, originY, pixelWidth, pixelHeight, array)
+
+    def tif_to_perpix_1982_2015(self):
+        fdir = join(self.datadir,'tif_05_clean')
+        outdir = join(self.datadir,'perpix/1982-2015')
+        T.mk_dir(outdir,force=True)
+        selected_tif_list = []
+        for y in range(1982,2016):
+            for m in range(1,13):
+                f = '{}{:02d}01.tif'.format(y,m)
+                selected_tif_list.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,selected_tif_list)
+
+    def anomaly(self):
+        fdir = join(self.datadir, 'perpix/1982-2015')
+        outdir = join(self.datadir, 'anomaly/1982-2015')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+        pass
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly/1982-2015')
+        outdir = join(self.datadir,'detrend/1982-2015')
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'ERA-SM.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def check_cci_sm(self):
+        # fdir = join(self.datadir, 'anomaly','1982-2015')
+        fdir = join(self.datadir, 'detrend','1982-2015')
+        spatial_dic = T.load_npy_dir(fdir)
+        spatial_dic1 = {}
+        for pix in tqdm(spatial_dic):
+            vals = spatial_dic[pix]
+            vals = np.array(vals)
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            mean = np.nanmean(vals)
+            # a,b,r,p = T.nan_line_fit(np.arange(len(vals)),vals)
+            # mean = len(vals)
+            # spatial_dic1[pix] = a
+            spatial_dic1[pix] = mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dic1)
+        plt.imshow(arr)
+        plt.show()
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -997,6 +1117,7 @@ def main():
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
+    ERA_SM().run()
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
