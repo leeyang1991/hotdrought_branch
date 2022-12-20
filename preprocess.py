@@ -324,13 +324,13 @@ class SPEI:
 
 class SPI:
     def __init__(self):
-        self.datadir = join(data_root,'CRU_precip')
+        self.datadir = join(data_root,'SPI')
         pass
 
     def run(self):
         # self.cal_spi()
         # self.pick_SPI_year_range()
-        self.pick_annual_gs()
+        self.every_month()
         # self.check_spi()
         pass
 
@@ -338,12 +338,13 @@ class SPI:
         date_range = '1930-2020'
         data_start_year = 1930
         # P_dir = CRU().data_dir + 'pre/per_pix/'
-        P_dir = join(self.datadir,'per_pix',date_range)
+        P_dir = join(Precipitation().datadir,'per_pix',date_range)
         # P_dic = T.load_npy_dir(P_dir,condition='005')
         P_dic = T.load_npy_dir(P_dir)
-        scale_list = [1,3,6,9,12]
+        # scale_list = [1,3,6,9,12]
+        scale_list = range(1,25)
         for scale in scale_list:
-            outdir = join(self.datadir,'per_pix_spi',date_range)
+            outdir = join(self.datadir,'per_pix',date_range)
             T.mk_dir(outdir,force=True)
             outf = join(outdir,f'spi{scale:02d}')
             # distrib = indices.Distribution('pearson')
@@ -351,6 +352,9 @@ class SPI:
             Periodicity = compute.Periodicity(12)
             spatial_dic = {}
             for pix in tqdm(P_dic,desc=f'scale {scale}'):
+                r,c = pix
+                if r > 180:
+                    continue
                 vals = P_dic[pix]
                 vals = np.array(vals)
                 vals = T.mask_999999_arr(vals,warning=False)
@@ -373,8 +377,8 @@ class SPI:
             T.save_npy(spatial_dic,outf)
 
     def pick_SPI_year_range(self):
-        fdir = join(self.datadir,'per_pix_spi','1930-2020')
-        outdir = join(self.datadir,'per_pix_spi',year_range)
+        fdir = join(self.datadir,'per_pix','1930-2020')
+        outdir = join(self.datadir,'per_pix',year_range)
         T.mk_dir(outdir)
         start_year = 1930
         end_year = 2020
@@ -404,16 +408,54 @@ class SPI:
                 picked_vals_dic[pix] = picked_vals
             T.save_npy(picked_vals_dic,outf)
 
+    def every_month(self):
+        fdir = join(self.datadir,'per_pix',year_range)
+        outdir = join(self.datadir,'every_month',year_range)
+        params_list = []
+        for f in T.listdir(fdir):
+            scale = f.split('.')[0]
+            outdir_i = join(outdir, scale)
+            T.mkdir(outdir_i, force=True)
+            param = [fdir,f,outdir_i]
+            # self.kernel_every_month(param)
+            params_list.append(param)
+        MULTIPROCESS(self.kernel_every_month,params_list).run(process=7)
+
+    def kernel_every_month(self,params):
+        fdir,f,outdir_i = params
+        fpath = join(fdir, f)
+        spatial_dict = T.load_npy(fpath)
+        month_list = range(1, 13)
+        for mon in month_list:
+            spatial_dict_mon = {}
+            for pix in spatial_dict:
+                r, c = pix
+                if r > 180:
+                    continue
+                vals = spatial_dict[pix]
+                val_mon = T.monthly_vals_to_annual_val(vals, [mon])
+                val_mon[val_mon < -10] = -999999
+                num = T.count_num(val_mon, -999999)
+                if num > 10:
+                    continue
+                val_mon[val_mon < -10] = np.nan
+                if T.is_all_nan(val_mon):
+                    continue
+                spatial_dict_mon[pix] = val_mon
+            outf = join(outdir_i, f'{mon:02d}')
+            T.save_npy(spatial_dict_mon, outf)
+        pass
 
     def check_spi(self):
-        fdir = join(self.datadir,'per_pix_spi',year_range)
+        fdir = join(self.datadir,'SPI',year_range)
         for f in T.listdir(fdir):
             fpath = join(fdir,f)
             spatial_dict = T.load_npy(fpath)
             spatial_dict1 = {}
             for pix in spatial_dict:
                 vals = spatial_dict[pix]
-                spatial_dict1[pix] = np.mean(vals)
+                spatial_dict1[pix] = len(vals)
+                # spatial_dict1[pix] = np.mean(vals)
             arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
             plt.imshow(arr)
             plt.show()
@@ -1327,8 +1369,8 @@ class ERA_SM:
 
 def main():
     # GIMMS_NDVI().run()
-    SPEI().run()
-    # SPI().run()
+    # SPEI().run()
+    SPI().run()
     # TMP().run()
     # Precipitation().run()
     # VPD().run()
