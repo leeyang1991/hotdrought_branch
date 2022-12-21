@@ -26,7 +26,7 @@ class Meta_information:
                 'path_type': 'file',
             },
             'SPI': {
-                'path': join(data_root, 'CRU_precip/per_pix_spi',year_range),
+                'path': join(data_root, 'SPI/per_pix',year_range),
                 'path_type': 'multi-files',
             },
             'NDVI': {
