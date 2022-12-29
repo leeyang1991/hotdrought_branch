@@ -505,12 +505,17 @@ class Max_Scale_and_Lag_correlation_SPI:
         # self.compose_scale_month_to_df()
         # self.max_scale_and_month()
 
+
         # individual max lag based on max scale
         ###### with issue
         # self.lag_corr_depends_on_max_scale_and_month()
         # self.max_lag()
 
-        # corresponding max scale and max lag
+
+        # todo:individual max lag based on max scale and month
+
+
+        # corresponding max scale, month, and max
         self.NDVI_SPI_correlation_every_scale_month_and_lag()
         self.compose_scale_month_lag_to_df()
         self.max_scale_month_lag()
