@@ -2,7 +2,7 @@
 from __init__ import *
 from meta_info import *
 import xymap
-import statistic
+# import statistic
 result_root_this_script = join(results_root, 'analysis')
 
 
@@ -31,6 +31,7 @@ class GLobal_var:
         return spatial_dict
 
     def load_df(self):
+        import statistic
         dff = join(statistic.Dataframe().dff)
         df = T.load_df(dff)
         cols = self.get_rs_rt_cols()
@@ -247,11 +248,11 @@ class Max_Scale_and_Lag_correlation_SPEI:
                 scale = scale.split('.')[0]
                 correlation_spatial_dict = {}
                 for pix in tqdm(NDVI_spatial_dict,desc=f'lag:{lag},scale:{scale}'):
-                    if not pix in gs_dict:
-                        continue
+                    # if not pix in gs_dict:
+                    #     continue
                     if not pix in SPEI_spatial_dict:
                         continue
-                    gs = gs_dict[pix]
+                    # gs = gs_dict[pix]
                     ndvi = NDVI_spatial_dict[pix]
                     spei = SPEI_spatial_dict[pix]
                     spei = T.detrend_vals(spei)
@@ -323,11 +324,11 @@ class Max_Scale_and_Lag_correlation_SPEI:
             scale = scale.split('.')[0]
             correlation_spatial_dict = {}
             for pix in tqdm(NDVI_spatial_dict,desc=f'scale:{scale}'):
-                if not pix in gs_dict:
-                    continue
+                # if not pix in gs_dict:
+                #     continue
                 if not pix in SPEI_spatial_dict:
                     continue
-                gs = gs_dict[pix]
+                # gs = gs_dict[pix]
                 ndvi = NDVI_spatial_dict[pix]
                 spei = SPEI_spatial_dict[pix]
                 gs = list(gs)
@@ -512,15 +513,13 @@ class Max_Scale_and_Lag_correlation_SPI:
         # self.max_lag()
 
 
-        # todo:individual max lag based on max scale and month
-
-
         # corresponding max scale, month, and max
-        self.NDVI_SPI_correlation_every_scale_month_and_lag()
-        self.compose_scale_month_lag_to_df()
-        self.max_scale_month_lag()
+        # self.NDVI_SPI_correlation_every_scale_month_and_lag()
+        # self.compose_scale_month_lag_to_df()
+        # self.max_scale_month_lag()
 
-
+        # mean max scale, month, and max
+        self.mean_max_scale_month_lag()
 
         # self.scale_lag_bivariate_plot()
         pass
@@ -631,8 +630,8 @@ class Max_Scale_and_Lag_correlation_SPI:
         spi_month_dict = self.__spi_scale_and_month_dict()
         ndvi_month_dict = self.__ndvi_scale_and_month_dict()
         outdir = join(self.this_class_arr,'lag_corr_depends_on_max_scale_and_month')
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        # NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
+        # SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
         T.mk_dir(outdir,force=True)
         outf = join(outdir,f'{method}_lag_corr.df')
         max_scale_f = join(self.this_class_tif,'max_scale_and_month',method,f'{method}_max_scale.tif')
@@ -692,6 +691,42 @@ class Max_Scale_and_Lag_correlation_SPI:
         DIC_and_TIF().pix_dic_to_tif(max_lag_dict,outf_max_lag)
         DIC_and_TIF().pix_dic_to_tif(max_r,outf_max_r)
 
+    def lag_corr_depends_on_max_scale_and_monthsss(self):
+        import preprocess
+        method = 'pearson'
+        spi_month_dict = self.__spi_scale_and_month_dict()
+        ndvi_month_dict = self.__ndvi_scale_and_month_dict()
+        outdir = join(self.this_class_arr,'lag_corr_depends_on_max_scale_and_month')
+        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
+        SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,f'{method}_lag_corr.df')
+        max_scale_f = join(self.this_class_tif,'max_scale_and_month',method,f'{method}_max_scale.tif')
+        max_month_f = join(self.this_class_tif,'max_scale_and_month',method,f'{method}_max_month.tif')
+        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
+        max_month_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_month_f)
+        lag_list = list(range(5))
+
+        all_dict = {}
+        for lag in lag_list:
+            corr_spatial_dict = {}
+            for pix in tqdm(max_month_spatial_dict,desc=f'lag {lag}'):
+                max_scale = max_scale_spatial_dict[pix]
+                max_month = max_month_spatial_dict[pix]
+                if np.isnan(max_scale) or np.isnan(max_month):
+                    continue
+                max_scale = int(max_scale)
+                max_month = int(max_month)
+                spi_key = f'{max_scale:02d}_{max_month:02d}'
+                ndvi_key = f'{max_month:02d}'
+                spi_value = spi_month_dict[spi_key][pix]
+                ndvi_value = ndvi_month_dict[ndvi_key][pix]
+                r, p = T.lag_correlation(spi_value, ndvi_value, lag, method=method)
+                corr_spatial_dict[pix] = r
+            all_dict[lag] = corr_spatial_dict
+        df = T.spatial_dics_to_df(all_dict)
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
 
     def NDVI_SPI_correlation_every_scale_month_and_lag(self):
         import preprocess
@@ -809,6 +844,93 @@ class Max_Scale_and_Lag_correlation_SPI:
         DIC_and_TIF().pix_dic_to_tif(max_month_dict,outf_max_month)
         DIC_and_TIF().pix_dic_to_tif(max_lag_dict,outf_max_lag)
         DIC_and_TIF().pix_dic_to_tif(max_r,outf_max_r)
+
+
+    def mean_max_scale_month_lag(self):
+        # method = 'pearson'
+        method = 'spearman'
+        # valid_mon_list = ['04','05','06','07','08','09','10','11']
+        # valid_mon_list = set(valid_mon_list)
+        # valid_scale_list = list(range(1,13))
+        valid_scale_list = list(range(1,25))
+        valid_scale_list = [f'{i:02d}' for i in valid_scale_list]
+        outdir = join(self.this_class_tif,'mean_max_scale_month_lag',method)
+        T.mk_dir(outdir,force=True)
+        dff = join(self.this_class_arr,'compose_scale_month_lag_to_df',method,'dataframe.df')
+        print('loading',dff)
+        df = T.load_df(dff)
+        print('loaded')
+        # exit()
+        cols = df.columns.tolist()
+        cols.remove('pix')
+        max_scale_dict = {}
+        max_month_dict = {}
+        max_lag_dict = {}
+        # max_r = {}
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row.pix
+            dict_i = {}
+            for col in cols:
+                scale, mon, lag = col.split('_')
+                # if not mon in valid_mon_list:
+                #     continue
+                if not scale in valid_scale_list:
+                    continue
+                val = row[col]
+                if np.isnan(val):
+                    continue
+                # val = abs(val)
+                dict_i[col] = val
+            if len(dict_i)==0:
+                continue
+            # print(dict_i)
+            scale_dict = {}
+            month_dict = {}
+            lag_dict = {}
+            for key in dict_i:
+                scale,mon,lag = key.split('_')
+                val = dict_i[key]
+                if not scale in scale_dict:
+                    scale_dict[scale] = []
+                scale_dict[scale].append(val)
+                if not mon in month_dict:
+                    month_dict[mon] = []
+                month_dict[mon].append(val)
+                if not lag in lag_dict:
+                    lag_dict[lag] = []
+                lag_dict[lag].append(val)
+            lag_mean_dict = {}
+            for lag in lag_dict:
+                lag_mean_dict[lag] = np.mean(lag_dict[lag])
+            max_lag = T.get_max_key_from_dict(lag_mean_dict)
+
+            month_mean_dict = {}
+            for mon in month_dict:
+                month_mean_dict[mon] = np.mean(month_dict[mon])
+            max_mon = T.get_max_key_from_dict(month_mean_dict)
+
+            scale_mean_dict = {}
+            for scale in scale_dict:
+                scale_mean_dict[scale] = np.mean(scale_dict[scale])
+            max_scale = T.get_max_key_from_dict(scale_mean_dict)
+
+            # print(max_scale,max_mon,max_lag)
+            max_scale = int(max_scale)
+            max_mon = int(max_mon)
+            max_lag = int(max_lag)
+
+            max_scale_dict[pix] = max_scale
+            max_month_dict[pix] = max_mon
+            max_lag_dict[pix] = max_lag
+            # max_r[pix] = r
+        outf_max_scale = join(outdir,f'{method}_max_scale.tif')
+        outf_max_month = join(outdir,f'{method}_max_month.tif')
+        outf_max_lag = join(outdir,f'{method}_max_lag.tif')
+        # outf_max_r = join(outdir,f'{method}_max_r.tif')
+        DIC_and_TIF().pix_dic_to_tif(max_scale_dict,outf_max_scale)
+        DIC_and_TIF().pix_dic_to_tif(max_month_dict,outf_max_month)
+        DIC_and_TIF().pix_dic_to_tif(max_lag_dict,outf_max_lag)
+        # DIC_and_TIF().pix_dic_to_tif(max_r,outf_max_r)
 
     def __spi_scale_and_month_dict(self):
         import preprocess
@@ -1201,15 +1323,15 @@ class Resistance_Resilience:
         rt_list = []
         for i,row in tqdm(df.iterrows(),total=len(df)):
             pix = row['pix']
-            if not pix in gs_dict:
-                rt_list.append(np.nan)
-                continue
+            # if not pix in gs_dict:
+            #     rt_list.append(np.nan)
+            #     continue
             if not pix in NDVI_spatial_dict:
                 rt_list.append(np.nan)
                 continue
             lag = row['max_lag']
             drought_year = row['drought_year']
-            gs = gs_dict[pix]
+            # gs = gs_dict[pix]
             gs = list(gs)
             NDVI = NDVI_spatial_dict[pix]
             NDVI = np.array(NDVI)
@@ -1239,15 +1361,15 @@ class Resistance_Resilience:
             rs_list = []
             for i,row in tqdm(df.iterrows(),total=len(df),desc=f'cal_rs post_year:{post_year}'):
                 pix = row['pix']
-                if not pix in gs_dict:
-                    rs_list.append(np.nan)
-                    continue
+                # if not pix in gs_dict:
+                #     rs_list.append(np.nan)
+                #     continue
                 if not pix in NDVI_spatial_dict:
                     rs_list.append(np.nan)
                     continue
                 lag = row['max_lag']
                 drought_year = row['drought_year']
-                gs = gs_dict[pix]
+                # gs = gs_dict[pix]
                 gs = list(gs)
                 NDVI = NDVI_spatial_dict[pix]
                 NDVI = np.array(NDVI)
