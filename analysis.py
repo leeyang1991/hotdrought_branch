@@ -1237,12 +1237,12 @@ class Resistance_Resilience:
         # self.check_lag_and_scale()
         # self.gen_dataframe()
         df = self.__gen_df_init()
-        df = self.add_max_lag_and_scale(df)
+        # df = self.add_max_lag_and_scale(df)
         # df = self.cal_rt(df)
-        # df = self.cal_rs(df)
+        df = self.cal_rs(df)
         # # self.rt_tif(df)
         #
-        # T.save_df(df, self.dff)
+        T.save_df(df, self.dff)
         T.df_to_excel(df, self.dff)
 
         pass
@@ -1316,6 +1316,7 @@ class Resistance_Resilience:
         return df
 
     def cal_rt(self,df):
+        gs = global_gs
 
         NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
         # gs_dict = Growing_season().longterm_growing_season()
@@ -1332,7 +1333,7 @@ class Resistance_Resilience:
             lag = row['max_lag']
             drought_year = row['drought_year']
             # gs = gs_dict[pix]
-            gs = list(gs)
+            # gs = list(gs)
             NDVI = NDVI_spatial_dict[pix]
             NDVI = np.array(NDVI)
             NDVI[NDVI < 0] = np.nan
@@ -1354,6 +1355,7 @@ class Resistance_Resilience:
     def cal_rs(self,df):
         post_n_list = [1,2,3,4]
         # post_n_list = [4]
+        gs = global_gs
         NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
         # gs_dict = Growing_season().longterm_growing_season()
         year_list = list(range(global_start_year,global_end_year+1))
@@ -1370,7 +1372,7 @@ class Resistance_Resilience:
                 lag = row['max_lag']
                 drought_year = row['drought_year']
                 # gs = gs_dict[pix]
-                gs = list(gs)
+                # gs = list(gs)
                 NDVI = NDVI_spatial_dict[pix]
                 NDVI = np.array(NDVI)
                 NDVI[NDVI < 0] = np.nan
@@ -1460,17 +1462,17 @@ class Resistance_Resilience:
         return df
         pass
 
-    def __get_max_scale_and_lag(self):
+    def __get_max_scale_and_lag(self,method='spearman'):
         outdir = join(self.this_class_arr,'max_scale_and_lag')
         T.mk_dir(outdir)
         outf = join(outdir,'max_scale_and_lag.df')
         if isfile(outf):
             df = T.load_df(outf)
             return df
-        max_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,'NDVI_SPI_max_correlation_scale_and_lag')
-        max_scale_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,'NDVI_SPI_max_scale_only_scale')
-        max_lag_f = join(max_lag_fdir,'max_lag.tif')
-        max_scale_f = join(max_scale_fdir,'max_scale.tif')
+        max_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,f'mean_max_scale_month_lag/{method}')
+        max_scale_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,f'mean_max_scale_month_lag/{method}')
+        max_lag_f = join(max_lag_fdir,f'{method}_max_lag.tif')
+        max_scale_f = join(max_scale_fdir,f'{method}_max_scale.tif')
 
         max_lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_lag_f)
         max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
@@ -1483,13 +1485,74 @@ class Resistance_Resilience:
         return df
 
 
+def line_to_shp(inputlist,outSHPfn):
+    ############重要#################
+    gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
+    ############重要#################
+    # start,end,outSHPfn,val1,val2,val3,val4,val5
+    # _,_,_,_=start[1],start[0],end[0],end[1]
+
+    shpDriver = ogr.GetDriverByName("ESRI Shapefile")
+    if os.path.exists(outSHPfn):
+        shpDriver.DeleteDataSource(outSHPfn)
+    outDataSource = shpDriver.CreateDataSource(outSHPfn)
+    outLayer = outDataSource.CreateLayer(outSHPfn, geom_type=ogr.wkbLineString)
+
+    #create line geometry
+    line = ogr.Geometry(ogr.wkbLineString)
+
+    for i in range(len(inputlist)):
+        start = inputlist[i][0]
+        end = inputlist[i][1]
+
+        line.AddPoint(start[0],start[1])
+        line.AddPoint(end[0],end[1])
+
+        featureDefn = outLayer.GetLayerDefn()
+        outFeature = ogr.Feature(featureDefn)
+        outFeature.SetGeometry(line)
+        outLayer.CreateFeature(outFeature)
+        outFeature.Destroy()
+        line = ogr.Geometry(ogr.wkbLineString)
+        outFeature = None
+
+    # define the spatial reference, WGS84
+    spatialRef = osr.SpatialReference()
+    spatialRef.ImportFromEPSG(4326)
+    spatialRef.MorphToESRI()
+    file = open(outSHPfn[:-4] + '.prj', 'w')
+    file.write(spatialRef.ExportToWkt())
+    file.close()
+
+def gen_world_grid_shp():
+    x_interval = 30
+    y_interval = 30
+    outf = join(this_root,'shp/world_line/world_grid.shp')
+    lon_list = np.arange(-180,180,x_interval)
+    lat_list = np.arange(-90,90,y_interval)
+    lon_list = np.array(lon_list,dtype=float)
+    lat_list = np.array(lat_list,dtype=float)
+    # print(lon_list)
+    # exit()
+    lon_lines = []
+    lat_lines = []
+    for lon in lon_list:
+        lon_lines.append([[lon,-90],[lon,90]])
+    for lat in lat_list:
+        lat_lines.append([[-180,lat],[180,lat]])
+    lines = lon_lines+lat_lines
+    line_to_shp(lines,outf)
+
+    pass
+
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    Max_Scale_and_Lag_correlation_SPI().run()
+    # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
     # Resistance_Resilience().run()
+    gen_world_grid_shp()
     pass
 
 

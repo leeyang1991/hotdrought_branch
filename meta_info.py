@@ -73,4 +73,5 @@ global_start_year,global_end_year = year_range.split('-')
 global_start_year = int(global_start_year)
 global_end_year = int(global_end_year)
 data_path_dict = Meta_information().path(year_range)
+global_gs = list(range(5,10))
 

@@ -87,7 +87,7 @@ class Dataframe_func:
         return df
 
     def add_ELI_to_df(self,df):
-        f = join(Water_energy_limited_area().this_class_tif, 'ELI/ELI_Temp_r.tif')
+        f = join(Water_energy_limited_area().this_class_tif, 'ELI/GLEAM-ET_ERA-SM_Temperature.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
         df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI')
         return df
@@ -137,7 +137,7 @@ class Dataframe:
         pass
 
     def run(self):
-        df = self.add_rs_rt_df()
+        df = self.copy_df()
         df = self.__gen_df_init()
         df = Dataframe_func(df).df
 
@@ -161,7 +161,7 @@ class Dataframe:
         print('len(df):',len(df))
         return df,dff
 
-    def add_rs_rt_df(self):
+    def copy_df(self):
         dff = Resistance_Resilience().dff
         df = T.load_df(dff)
         T.save_df(df, self.dff)
@@ -714,8 +714,8 @@ class Rt_Rs_change_overtime:
         pass
 
     def run(self):
-        # self.every_year()
-        # self.every_5_year()
+        self.every_year()
+        self.every_5_year()
         self.every_10_year()
         pass
 
@@ -861,7 +861,8 @@ class Drought_evnets_proess:
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
             T.mk_class_dir('Drought_evnets_proess', result_root_this_script, mode=2)
-        self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
+        # self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
+        self.var_list = ['NDVI', 'VPD', 'ERA-SM', 'GLEAM-ET', ]
         pass
 
     def run(self):
@@ -876,13 +877,16 @@ class Drought_evnets_proess:
         var_list = self.var_list
         df = GLobal_var().load_df()
         # gs_dict = Growing_season().longterm_growing_season()
+        gs = global_gs
         year_list = list(range(global_start_year, global_end_year + 1))
         for var in var_list:
             spatial_dict = GLobal_var().load_data(var)
             spatial_dict_gs_monthly = {}
             for pix in tqdm(spatial_dict,desc=f'monthly gs {var}'):
                 vals = spatial_dict[pix]
-                vals_gs_reshape = np.reshape(vals,(-1,12))
+                vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
+                # vals_gs_reshape = np.reshape(vals,(-1,12))
+                vals_gs_reshape = vals_gs
                 vals_gs_dict = dict(zip(year_list,vals_gs_reshape))
                 spatial_dict_gs_monthly[pix] = vals_gs_dict
             flatten_vals_list = []
@@ -899,7 +903,7 @@ class Drought_evnets_proess:
                 all_vals_list = []
                 for year_i in all_year_list:
                     if not year_i in spatial_dict_gs_monthly[pix]:
-                        all_vals_list.append([np.nan]*12)
+                        all_vals_list.append([np.nan]*len(gs))
                         continue
                     vals = spatial_dict_gs_monthly[pix][year_i]
                     all_vals_list.append(vals)
@@ -910,6 +914,22 @@ class Drought_evnets_proess:
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
 
+    def num_to_month(self,num):
+        month_dict = {
+            1:'Jan',
+            2:'Feb',
+            3:'Mar',
+            4:'Apr',
+            5:'May',
+            6:'Jun',
+            7:'Jul',
+            8:'Aug',
+            9:'Sep',
+            10:'Oct',
+            11:'Nov',
+            12:'Dec',
+        }
+        return month_dict[num]
 
     def plot_variables_in_drought_proess_monthly(self):
         outdir = join(self.this_class_png, 'variables_in_drought_proess_monthly')
@@ -920,6 +940,7 @@ class Drought_evnets_proess:
         limited_area_list = global_ELI_class
         drought_type_list = global_drought_type_list
         drought_type_color = {'normal-drought':'b','hot-drought':'r'}
+        gs = global_gs
         df = T.load_df(dff)
         for ltd in limited_area_list:
             df_ltd = df[df[ltd_var] == ltd]
@@ -927,7 +948,7 @@ class Drought_evnets_proess:
                 fname = f'{ltd}_{col}'
                 print(fname)
                 outf = join(outdir, f'{fname}.png')
-                plt.figure(figsize=(10, 4))
+                plt.figure(figsize=(14, 6))
                 for drt in drought_type_list:
                     df_drt = df_ltd[df_ltd['drought_type'] == drt]
                     vals = df_drt[f'{col}_monthly'].tolist()
@@ -942,15 +963,23 @@ class Drought_evnets_proess:
                     # vals_err = np.nanstd(vals_clean,axis=0)
                     vals_mean = np.nanmean(vals_clean,axis=0)
                     date_list = []
+                    date_str_list = []
                     for year in range(1996,2005):
-                        for month in range(1,13):
+                        # for month in range(1,13):
+                        for month in range(gs[0],gs[-1]+1):
                             date = datetime.datetime(year,month,1)
                             date_list.append(date)
-                    plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
-                    plt.plot(date_list,vals_mean)
+                            date_str = self.num_to_month(month)
+                            date_str_list.append(f'{year}-{date_str}')
+                    # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
+                    # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
+                    # plt.plot(date_list,vals_mean)
                     plt.title(fname)
-                    plt.xticks(rotation=45)
+                    plt.xticks(rotation=45,horizontalalignment='right')
                     plt.tight_layout()
+                plt.grid()
                 plt.legend()
                 # plt.show()
                 plt.savefig(outf,dpi=300)
@@ -1026,8 +1055,8 @@ def main():
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    # Drought_evnets_proess().run()
-    Rt_Rs_relationship().run()
+    Drought_evnets_proess().run()
+    # Rt_Rs_relationship().run()
     pass
 
 
