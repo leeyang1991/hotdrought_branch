@@ -75,3 +75,18 @@ global_end_year = int(global_end_year)
 data_path_dict = Meta_information().path(year_range)
 global_gs = list(range(5,10))
 
+global_lc_list = ('deciduous', 'evergreen', 'grass', 'shrubs')
+global_lc_marker_dict = {
+    'deciduous': 'o',
+    'evergreen': 's',
+    'grass': 'v',
+    'shrubs': 'D',
+}
+global_koppen_list = ('arid', 'cold arid', 'cold humid', 'hot arid', 'hot humid')
+global_koppen_color_dict = {
+    'arid': '#EB6100',
+    'cold arid': '#601986',
+    'cold humid': 'b',
+    'hot arid': 'r',
+    'hot humid': 'g',
+}

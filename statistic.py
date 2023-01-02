@@ -195,7 +195,8 @@ class Hot_Normal_Rs_Rt:
         # self.rs_rt_bar_water_energy_limited()
         # self.rs_rt_bar_Humid_Arid()
         # self.rs_rt_bar_PFTs()
-        self.rs_rt_pfts_eli_scatter()
+        # self.rs_rt_pfts_koppen_scatter()
+        self.rs_rt_pfts_koppen_area_ratio_scatter()
         pass
 
 
@@ -402,21 +403,10 @@ class Hot_Normal_Rs_Rt:
         koppen_col = 'Koppen'
         df = GLobal_var().load_df()
         drought_type_list = global_drought_type_list
-        lc_list = ('deciduous', 'evergreen', 'grass', 'shrubs')
-        lc_marker_dict = {
-            'deciduous': 'o',
-            'evergreen': 's',
-            'grass': 'v',
-            'shrubs': 'D',
-        }
-        koppen_list = ('arid', 'cold arid', 'cold humid', 'hot arid', 'hot humid')
-        koppen_color_dict = {
-            'arid': '#EB6100',
-            'cold arid': '#601986',
-            'cold humid': 'b',
-            'hot arid': 'r',
-            'hot humid': 'g',
-        }
+        lc_list = global_lc_list
+        koppen_list = global_koppen_list
+        lc_marker_dict = global_lc_marker_dict
+        koppen_color_dict = global_koppen_color_dict
         for drt in drought_type_list:
             df_drt = df[df['drought_type'] == drt]
             plt.figure()
@@ -448,6 +438,45 @@ class Hot_Normal_Rs_Rt:
             plt.xlabel(eli_col)
             plt.ylabel(rs_col)
         plt.show()
+
+
+    def rs_rt_pfts_koppen_area_ratio_scatter(self):
+        df = GLobal_var().load_df()
+        threshold = 0.05
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        drought_type_list = global_drought_type_list
+        lc_list = global_lc_list
+        koppen_list = global_koppen_list
+        eli_col = 'ELI'
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            for rs_col in rs_cols:
+                plt.figure()
+                xx = []
+                yy = []
+                for lc in lc_list:
+                    df_lc = df_drt[df_drt['landcover_GLC'] == lc]
+                    for kp in koppen_list:
+                        df_kp = df_lc[df_lc['Koppen'] == kp]
+                        df_kp_copy = df_kp.copy()
+                        df_kp_copy = df_kp_copy.dropna(subset=[eli_col, rs_col], how='any')
+                        vals = df_kp_copy[rs_col]
+                        vals = np.array(vals)
+                        vals = vals[vals < (1 - threshold)]
+                        # vals = vals[vals > (1 + threshold)]
+                        ratio = len(vals) / len(df_kp_copy)
+                        x = df_kp_copy[eli_col]
+                        x = np.array(x)
+                        x_mean = np.nanmean(x)
+                        xx.append(x_mean)
+                        yy.append(ratio)
+                        plt.scatter(x_mean, ratio, marker=global_lc_marker_dict[lc], color=global_koppen_color_dict[kp],
+                                    label=f'{kp}-{lc}', edgecolors='k', zorder=0, s=100)
+                # plt.legend()
+                sns.regplot(xx, yy, scatter=False, color='gray')
+                plt.title(f'{drt} {rs_col}')
+                # plt.ylim(-0.3,0.7)
+            plt.show()
 
 
 class ELI_AI_gradient:
