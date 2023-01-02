@@ -24,6 +24,8 @@ class Dataframe_func:
         df = self.AI_reclass(df)
         print('add ELI_significance')
         df = self.add_ELI_significance(df)
+        print('add koppen')
+        df = self.add_koppen(df)
 
         df = self.clean_df(df)
         self.df = df
@@ -121,6 +123,12 @@ class Dataframe_func:
         df['AI_class'] = AI_class
         return df
 
+    def add_koppen(self,df):
+        f = join(data_root, 'koppen/koppen_reclass_dic.npy')
+        val_dic = T.load_npy(f)
+        df = T.add_spatial_dic_to_df(df, val_dic, 'Koppen')
+        return df
+
     def add_ELI_significance(self,df):
         f = join(Water_energy_limited_area().this_class_tif, 'significant_pix_r/ELI_Temp_significance.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
@@ -137,7 +145,7 @@ class Dataframe:
         pass
 
     def run(self):
-        df = self.copy_df()
+        # df = self.copy_df()
         df = self.__gen_df_init()
         df = Dataframe_func(df).df
 
@@ -179,14 +187,15 @@ class Hot_Normal_Rs_Rt:
         pass
 
     def run(self):
-        self.rs_rt_tif()
+        # self.rs_rt_tif()
         #
-        self.rs_rt_bar()
-        self.rs_rt_hist()
+        # self.rs_rt_bar()
+        # self.rs_rt_hist()
 
-        self.rs_rt_bar_water_energy_limited()
-        self.rs_rt_bar_Humid_Arid()
-        self.rs_rt_bar_PFTs()
+        # self.rs_rt_bar_water_energy_limited()
+        # self.rs_rt_bar_Humid_Arid()
+        # self.rs_rt_bar_PFTs()
+        self.rs_rt_pfts_eli_scatter()
         pass
 
 
@@ -352,78 +361,93 @@ class Hot_Normal_Rs_Rt:
         T.mk_dir(outdir)
         df = GLobal_var().load_df()
         cols = GLobal_var().get_rs_rt_cols()
-        for col in cols:
-            plt.figure(figsize=(6,3))
-            for drt in self.drought_type_list:
+        # DIC_and_TIF().plot_df_spatial_pix(df,land_tif)
+        # plt.show()
+        # print(cols)
+        # exit()
+        for drt in self.drought_type_list:
+            flag = 0
+            for col in cols:
                 df_drt = df[df['drought_type'] == drt]
                 # print(col)
                 vals = df_drt[col]
                 vals = np.array(vals)
-                x,y = Plot().plot_hist_smooth(vals, bins=200, alpha=0)
-                plt.plot(x,y,label=f'{drt} {col}')
-            plt.legend()
-            plt.title(col)
-            outf = join(outdir, '{}.png'.format(col))
-            plt.savefig(outf, dpi=300)
-            plt.close()
-
-
-class Water_Energy_ltd:
-    '''
-    Based on Dataframe
-    1. plot the water energy limited area
-    2. plot the water energy limited area PDF
-    '''
-    def __init__(self):
-
-        pass
-
-    def run(self):
-        self.ELI()
-        self.AI()
-        pass
-
-    def ELI(self):
-        df = GLobal_var().load_df()
-        spatial_dict = {}
-        df_group_dict = T.df_groupby(df, 'pix')
-        ELI_list = []
-        for pix in df_group_dict:
-            df_pix = df_group_dict[pix]
-            vals = df_pix['ELI']
-            vals = np.array(vals)
-            mean = np.nanmean(vals)
-            spatial_dict[pix] = mean
-            ELI_list.append(mean)
-
-        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
-        plt.imshow(arr, cmap='RdBu_r',vmin=-0.4,vmax=0.4)
-        plt.colorbar()
-        plt.figure()
-        plt.hist(ELI_list, bins=100)
+                x,y = Plot().plot_hist_smooth(vals, bins=200, alpha=0, range=(0.8,1.2))
+                y = y + flag * 0.03
+                if 'hot' in drt:
+                    alpha = 0.5
+                else:
+                    alpha = 1
+                plt.plot(x,y,label=f'{drt} {col}', alpha=alpha)
+                flag += 1
+        plt.legend()
+        # plt.title(drt)
         plt.show()
-        pass
+        # outf = join(outdir, '{}.png'.format(col))
+        # plt.savefig(outf, dpi=300)
+        # plt.close()
 
-    def AI(self):
+    def rs_rt_pfts_koppen_scatter(self):
+        outdir = join(self.this_class_png, 'rs_rt_pfts_koppen_scatter')
+        T.mk_dir(outdir)
+        rs_col = 'rt'
+        # rs_col = 'ELI'
+        # rs_col = 'rs_1'
+        # rs_col = 'rs_2'
+        # rs_col = 'rs_4'
+        eli_col = 'ELI'
+        # eli_col = 'max_scale'
+        # eli_col = 'max_lag'
+        lc_col = 'landcover_GLC'
+        koppen_col = 'Koppen'
         df = GLobal_var().load_df()
-        spatial_dict = {}
-        df_group_dict = T.df_groupby(df, 'pix')
-        ELI_list = []
-        for pix in df_group_dict:
-            df_pix = df_group_dict[pix]
-            vals = df_pix['aridity_index']
-            vals = np.array(vals)
-            mean = np.nanmean(vals)
-            spatial_dict[pix] = mean
-            ELI_list.append(mean)
-
-        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
-        plt.imshow(arr, cmap='RdBu',vmin=0,vmax=1.3)
-        plt.colorbar()
-        plt.figure()
-        plt.hist(ELI_list, bins=100)
+        drought_type_list = global_drought_type_list
+        lc_list = ('deciduous', 'evergreen', 'grass', 'shrubs')
+        lc_marker_dict = {
+            'deciduous': 'o',
+            'evergreen': 's',
+            'grass': 'v',
+            'shrubs': 'D',
+        }
+        koppen_list = ('arid', 'cold arid', 'cold humid', 'hot arid', 'hot humid')
+        koppen_color_dict = {
+            'arid': '#EB6100',
+            'cold arid': '#601986',
+            'cold humid': 'b',
+            'hot arid': 'r',
+            'hot humid': 'g',
+        }
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            plt.figure()
+            xx = []
+            yy = []
+            for lc in lc_list:
+                df_lc = df_drt[df_drt[lc_col] == lc]
+                for kp in koppen_list:
+                    df_kp = df_lc[df_lc[koppen_col] == kp]
+                    if len(df_kp) <= 100:
+                        continue
+                    x = df_kp[eli_col]
+                    y = df_kp[rs_col]
+                    x = np.array(x)
+                    y = np.array(y)
+                    x_err = T.uncertainty_err(x)[0]
+                    y_err = T.uncertainty_err(y)[0]
+                    # x_err = np.nanstd(x)
+                    # y_err = np.nanstd(y)
+                    x_mean = np.nanmean(x)
+                    y_mean = np.nanmean(y)
+                    xx.append(x_mean)
+                    yy.append(y_mean)
+                    plt.errorbar(x_mean, y_mean, xerr=x_err, yerr=y_err,color='gray', alpha=0.5,zorder=-99)
+                    plt.scatter(x_mean, y_mean, marker=lc_marker_dict[lc], color=koppen_color_dict[kp], label=f'{kp}-{lc}',edgecolors='k',zorder=0)
+            # plt.legend()
+            sns.regplot(xx, yy, scatter=False, color='gray')
+            plt.title(drt)
+            plt.xlabel(eli_col)
+            plt.ylabel(rs_col)
         plt.show()
-        pass
 
 
 class ELI_AI_gradient:
@@ -853,14 +877,14 @@ class Rt_Rs_change_overtime:
                     # plt.show()
 
 
-class Drought_evnets_proess:
+class Drought_events_proess:
     '''
     introduce NDVI, CSIF, VOD, VPD, SM, ET, T, P
     optimal Temperature?
     '''
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('Drought_evnets_proess', result_root_this_script, mode=2)
+            T.mk_class_dir('Drought_events_proess', result_root_this_script, mode=2)
         # self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
         self.var_list = ['NDVI', 'VPD', 'ERA-SM', 'GLEAM-ET', ]
         pass
@@ -964,11 +988,12 @@ class Drought_evnets_proess:
                     vals_mean = np.nanmean(vals_clean,axis=0)
                     date_list = []
                     date_str_list = []
-                    for year in range(1996,2005):
+                    # for year in range(1996,2005):
+                    for year in range(-4,5):
                         # for month in range(1,13):
                         for month in range(gs[0],gs[-1]+1):
-                            date = datetime.datetime(year,month,1)
-                            date_list.append(date)
+                            # date = datetime.datetime(year,month,1)
+                            # date_list.append(date)
                             date_str = self.num_to_month(month)
                             date_str_list.append(f'{year}-{date_str}')
                     # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
@@ -1049,13 +1074,14 @@ class Rt_Rs_relationship:
                 exit()
 
 
+
 def main():
     # Dataframe().run()
-    # Hot_Normal_Rs_Rt().run()
+    Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    Drought_evnets_proess().run()
+    # Drought_events_proess().run()
     # Rt_Rs_relationship().run()
     pass
 

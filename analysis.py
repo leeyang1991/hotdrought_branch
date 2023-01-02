@@ -38,6 +38,7 @@ class GLobal_var:
         for col in cols:
             df[df[col] > 1.4] = np.nan
             df[df[col] < 0.6] = np.nan
+        df = df[df['lat']>30]
         return df
 
     def get_rs_rt_cols(self):
