@@ -11,7 +11,7 @@ class GLobal_var:
 
         pass
 
-    def load_data(self,var_i, year_range=year_range):
+    def load_data(self,var_i, year_range=global_year_range):
         data_path_dict = Meta_information().path(year_range)
         data_path = data_path_dict[var_i]['path']
         path_type = data_path_dict[var_i]['path_type']
@@ -383,8 +383,8 @@ class Max_Scale_and_Lag_correlation_SPEI:
         import preprocess
         outdir = join(self.this_class_arr,'NDVI_SPEI_correlation_every_scale_and_month')
         T.mk_dir(outdir)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        SPEI_monthly_dir = join(preprocess.SPEI().datadir,'every_month',year_range)
+        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
+        SPEI_monthly_dir = join(preprocess.SPEI().datadir,'every_month',global_year_range)
 
         params_list = []
         for scale in T.listdir(SPEI_monthly_dir):
@@ -529,8 +529,8 @@ class Max_Scale_and_Lag_correlation_SPI:
         import preprocess
         outdir = join(self.this_class_arr,'NDVI_SPI_correlation_every_scale_and_month')
         T.mk_dir(outdir)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        SPEI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
+        SPEI_monthly_dir = join(preprocess.SPI().datadir,'every_month',global_year_range)
 
         params_list = []
         for scale in T.listdir(SPEI_monthly_dir):
@@ -626,13 +626,12 @@ class Max_Scale_and_Lag_correlation_SPI:
 
 
     def lag_corr_depends_on_max_scale_and_month(self):
-        import preprocess
         method = 'pearson'
         spi_month_dict = self.__spi_scale_and_month_dict()
         ndvi_month_dict = self.__ndvi_scale_and_month_dict()
         outdir = join(self.this_class_arr,'lag_corr_depends_on_max_scale_and_month')
-        # NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        # SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        # NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
+        # SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',global_year_range)
         T.mk_dir(outdir,force=True)
         outf = join(outdir,f'{method}_lag_corr.df')
         max_scale_f = join(self.this_class_tif,'max_scale_and_month',method,f'{method}_max_scale.tif')
@@ -698,8 +697,8 @@ class Max_Scale_and_Lag_correlation_SPI:
         spi_month_dict = self.__spi_scale_and_month_dict()
         ndvi_month_dict = self.__ndvi_scale_and_month_dict()
         outdir = join(self.this_class_arr,'lag_corr_depends_on_max_scale_and_month')
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
+        SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',global_year_range)
         T.mk_dir(outdir,force=True)
         outf = join(outdir,f'{method}_lag_corr.df')
         max_scale_f = join(self.this_class_tif,'max_scale_and_month',method,f'{method}_max_scale.tif')
@@ -735,8 +734,8 @@ class Max_Scale_and_Lag_correlation_SPI:
         # method = 'pearson'
         outdir = join(self.this_class_arr,'NDVI_SPI_correlation_every_scale_month_and_lag',method)
         T.mk_dir(outdir,force=True)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
-        SPEI_monthly_dir = join(preprocess.SPI().datadir,'every_month',year_range)
+        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
+        SPEI_monthly_dir = join(preprocess.SPI().datadir,'every_month',global_year_range)
         lag_list = list(range(5))
         params_list = []
         for scale in T.listdir(SPEI_monthly_dir):
@@ -935,7 +934,7 @@ class Max_Scale_and_Lag_correlation_SPI:
 
     def __spi_scale_and_month_dict(self):
         import preprocess
-        fdir = join(preprocess.SPI().datadir,'every_month',year_range)
+        fdir = join(preprocess.SPI().datadir,'every_month',global_year_range)
         all_spatial_dict = {}
         for folder in tqdm(T.listdir(fdir),desc='loading SPI'):
             scale = folder.replace('spi','')
@@ -948,7 +947,7 @@ class Max_Scale_and_Lag_correlation_SPI:
 
     def __ndvi_scale_and_month_dict(self):
         import preprocess
-        fdir = join(preprocess.GIMMS_NDVI().datadir,'every_month',year_range)
+        fdir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
         all_spatial_dict = {}
         for f in tqdm(T.listdir(join(fdir)),desc='loading NDVI'):
             mon = f.split('.')[0]

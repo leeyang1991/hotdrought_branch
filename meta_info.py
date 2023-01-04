@@ -68,11 +68,11 @@ global_drought_type_list = ['normal-drought', 'hot-drought']
 global_ELI_class = ['Energy-Limited', 'Water-Limited']
 global_AI_class = ['Humid', 'Arid']
 land_tif = join(this_root,'conf/land.tif')
-year_range = '1982-2015'
-global_start_year,global_end_year = year_range.split('-')
+global_year_range = '1982-2015'
+global_start_year,global_end_year = global_year_range.split('-')
 global_start_year = int(global_start_year)
 global_end_year = int(global_end_year)
-data_path_dict = Meta_information().path(year_range)
+data_path_dict = Meta_information().path(global_year_range)
 global_gs = list(range(5,10))
 
 global_lc_list = ('deciduous', 'evergreen', 'grass', 'shrubs')
@@ -90,3 +90,6 @@ global_koppen_color_dict = {
     'hot arid': 'r',
     'hot humid': 'g',
 }
+global_ELI_class_list = ('Energy-Limited', 'Water-Limited')
+global_AI_class_list = ('Humid', 'Arid')
+global_threshold = 0.05

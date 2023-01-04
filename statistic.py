@@ -196,7 +196,9 @@ class Hot_Normal_Rs_Rt:
         # self.rs_rt_bar_Humid_Arid()
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
-        self.rs_rt_pfts_koppen_area_ratio_scatter()
+        # self.rs_rt_area_ratio_bar()
+        self.rs_rt_area_ratio_ELI_matrix()
+        # self.rs_rt_pfts_koppen_area_ratio_scatter()
         pass
 
 
@@ -478,6 +480,86 @@ class Hot_Normal_Rs_Rt:
                 # plt.ylim(-0.3,0.7)
             plt.show()
 
+    def rs_rt_area_ratio_bar(self):
+        outdir = join(self.this_class_png, 'rs_rt_area_ratio_bar')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        threshold = 0.05
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        drought_type_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        data = pd.DataFrame()
+        drt_list = []
+        rs_col_list = []
+        ratio_list = []
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            for rs_col in rs_cols:
+                df_drt_copy = df_drt.copy()
+                df_drt_copy = df_drt_copy.dropna(subset=['ELI', rs_col], how='any')
+                vals = df_drt_copy[rs_col]
+                vals = np.array(vals)
+                vals = vals[vals < (1 - threshold)]
+                # vals = vals[vals > (1 + threshold)]
+                ratio = len(vals) / len(df_drt_copy) * 100
+                drt_list.append(drt)
+                rs_col_list.append(rs_col)
+                ratio_list.append(ratio)
+        data['drought_type'] = drt_list
+        data['rs_col'] = rs_col_list
+        data['ratio'] = ratio_list
+
+        # sns.pointplot(x='rs_col', y='ratio', hue='drought_type', data=data,kind='bar')
+        sns.barplot(x='rs_col', y='ratio', hue='drought_type', data=data)
+        # plt.show()
+        outf = join(outdir, 'rs_rt_area_ratio_bar.png')
+        plt.savefig(outf, dpi=300)
+        plt.close()
+
+    def rs_rt_area_ratio_ELI_matrix(self):
+        outdir = join(self.this_class_png, 'rs_rt_area_ratio_ELI_matrix')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        threshold = global_threshold
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        # rs_cols.remove('rt')
+        drought_type_list = global_drought_type_list
+        ELI_col = 'ELI'
+        ELI_bins = np.linspace(-0.8,0.8,11)
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group,bins_list_str = T.df_bin(df_drt, ELI_col, ELI_bins)
+            matrix = []
+            y_ticks = []
+            for name,df_group_i in df_group:
+                y_ticks.append(name.left)
+                temp = []
+                for rs in rs_cols:
+                    df_group_i_copy = df_group_i.copy()
+                    df_group_i_copy = df_group_i_copy.dropna(subset=['ELI', rs], how='any')
+                    if len(df_group_i_copy) == 0:
+                        temp.append(np.nan)
+                        continue
+                    vals = df_group_i_copy[rs]
+                    vals = np.array(vals)
+                    vals = vals[vals < (1 - threshold)]
+                    # vals = vals[vals > (1 + threshold)]
+                    ratio = len(vals) / len(df_group_i_copy) * 100
+                    temp.append(ratio)
+                matrix.append(temp)
+            matrix = np.array(matrix)
+            plt.figure()
+            plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0, vmax=55)
+            plt.colorbar()
+            plt.xticks(range(len(rs_cols)), rs_cols, rotation=0)
+            plt.yticks(range(len(y_ticks)), y_ticks)
+            plt.ylabel('Ecological Stress Index\n(Water-limited --> Energy-limited)')
+            plt.title(f'{drt}')
+            plt.tight_layout()
+            outf = join(outdir, f'{drt}.png')
+            plt.savefig(outf, dpi=300)
+            plt.close()
+        # plt.show()
 
 class ELI_AI_gradient:
 
@@ -767,9 +849,12 @@ class Rt_Rs_change_overtime:
         pass
 
     def run(self):
-        self.every_year()
-        self.every_5_year()
-        self.every_10_year()
+        # self.every_year()
+        # self.every_5_year()
+        # self.every_5_year_area_ratio()
+        self.every_5_year_area_ratio_matrix()
+        # self.every_1_year_area_ratio_matrix()
+        # self.every_10_year()
         pass
 
     def every_year(self):
@@ -857,6 +942,199 @@ class Rt_Rs_change_overtime:
                     plt.savefig(join(outdir, f'{title}.png'))
                     plt.close()
                     # plt.show()
+
+    def every_5_year_area_ratio(self):
+        outdir = join(self.this_class_png, 'every_5_year_area_ratio')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        drought_year_col = 'drought_year'
+        ELI_class_col = 'ELI_class'
+        ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
+        drought_type_list = global_drought_type_list
+        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        threshold = global_threshold
+        group_year_list = [
+            [1982, 1983, 1984, 1985, 1986],
+            [1987, 1988, 1989, 1990, 1991],
+            [1992, 1993, 1994, 1995, 1996],
+            [1997, 1998, 1999, 2000, 2001],
+            [2002, 2003, 2004, 2005, 2006],
+            [2007, 2008, 2009, 2010, 2011],
+            [2012, 2013, 2014, 2015],
+        ]
+
+        for ltd in ELI_class_list:
+            df_ltd = df[df[ELI_class_col] == ltd]
+            for drt in drought_type_list:
+                df_drt = df_ltd[df_ltd['drought_type'] == drt]
+                for col in rs_rt_var_list:
+                    ratio_list = []
+                    year_list = []
+                    for years in group_year_list:
+                        df_years_list = []
+                        for year in years:
+                            df_year = df_drt[df_drt[drought_year_col] == year]
+                            df_years_list.append(df_year)
+                        df_years = pd.concat(df_years_list)
+                        vals = df_years[col].tolist()
+                        vals = np.array(vals)
+                        vals = vals[vals < (1 - threshold)]
+                        # vals = vals[vals > (1 + threshold)]
+                        ratio = len(vals) / len(df_years) * 100
+                        ratio_list.append(ratio)
+                        year_list.append(f'{years[0]}-{years[-1]}')
+                    plt.figure(figsize=(6, 3))
+                    plt.bar(year_list, ratio_list)
+                    title = f'{drt} {ltd} {col}'
+                    plt.title(title)
+                    plt.xticks(rotation=45,ha='right')
+                    plt.tight_layout()
+                    # plt.show()
+                    plt.savefig(join(outdir, f'{title}.png'))
+                    plt.close()
+
+    def every_1_year_area_ratio_matrix(self):
+
+        outdir = join(self.this_class_png, 'every_1_year_area_ratio_matrix')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        threshold = global_threshold
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        # rs_cols.remove('rt')
+        drought_type_list = global_drought_type_list
+        # group_year_list = [
+        #     [1982, 1983, 1984, 1985, 1986],
+        #     [1987, 1988, 1989, 1990, 1991],
+        #     [1992, 1993, 1994, 1995, 1996],
+        #     [1997, 1998, 1999, 2000, 2001],
+        #     [2002, 2003, 2004, 2005, 2006],
+        #     [2007, 2008, 2009, 2010, 2011],
+        #     [2012, 2013, 2014, 2015],
+        # ]
+        all_year_list = list(range(global_start_year, global_end_year + 1))
+        all_year_list = [[year] for year in all_year_list]
+        # print(all_year_list)
+        # exit()
+        ELI_col = 'ELI'
+        drought_year_col = 'drought_year'
+        ELI_bins = np.linspace(-0.8,0.8,11)
+        for col in rs_cols:
+            for drt in drought_type_list:
+                df_drt = df[df['drought_type'] == drt]
+                df_group,bins_list_str = T.df_bin(df_drt, ELI_col, ELI_bins)
+                matrix = []
+                y_ticks = []
+                for name,df_group_i in df_group:
+                    y_ticks.append(name.left)
+                    temp = []
+                    vals_list = []
+                    err_list = []
+                    year_list = []
+                    for years in all_year_list:
+                        df_years_list = []
+                        for year in years:
+                            df_year = df_group_i[df_group_i[drought_year_col] == year]
+                            df_years_list.append(df_year)
+                        df_years = pd.concat(df_years_list)
+                        if len(df_years) == 0:
+                            temp.append(np.nan)
+                            continue
+                        vals = df_years[col].tolist()
+                        vals = np.array(vals)
+                        # vals_mean = np.nanmean(vals)
+                        vals = vals[vals < (1 - threshold)]
+                        # vals = vals[vals > (1 + threshold)]
+                        ratio = len(vals) / len(df_years) * 100
+                        # year_list.append(f'{years[0]}-{years[-1]}')
+                        year_list.append(f'{years[0]}')
+                        temp.append(ratio)
+                        # temp.append(vals_mean)
+                    matrix.append(temp)
+                matrix = np.array(matrix)
+                plt.figure(figsize=(12, 4))
+                plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0, vmax=55)
+                # plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0.95, vmax=1.05)
+                plt.colorbar()
+                plt.xticks(range(len(list(range(global_start_year, global_end_year + 1)))), list(range(global_start_year, global_end_year + 1)), rotation=45, ha='right')
+                plt.yticks(range(len(y_ticks)), y_ticks)
+                plt.ylabel('Ecological Stress Index\n(Water-limited --> Energy-limited)')
+                plt.title(f'{drt} {col}')
+                plt.tight_layout()
+                outf = join(outdir, f'{drt} {col}.png')
+                # plt.show()
+                plt.savefig(outf)
+                plt.close()
+
+    def every_5_year_area_ratio_matrix(self):
+
+        outdir = join(self.this_class_png, 'every_5_year_area_ratio_matrix')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        threshold = global_threshold
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        # rs_cols.remove('rt')
+        drought_type_list = global_drought_type_list
+        group_year_list = [
+            [1982, 1983, 1984, 1985, 1986],
+            [1987, 1988, 1989, 1990, 1991],
+            [1992, 1993, 1994, 1995, 1996],
+            [1997, 1998, 1999, 2000, 2001],
+            [2002, 2003, 2004, 2005, 2006],
+            [2007, 2008, 2009, 2010, 2011],
+            [2012, 2013, 2014, 2015],
+        ]
+        # print(all_year_list)
+        # exit()
+        ELI_col = 'ELI'
+        drought_year_col = 'drought_year'
+        ELI_bins = np.linspace(-0.8,0.8,11)
+        for col in rs_cols:
+            for drt in drought_type_list:
+                df_drt = df[df['drought_type'] == drt]
+                df_group,bins_list_str = T.df_bin(df_drt, ELI_col, ELI_bins)
+                matrix = []
+                y_ticks = []
+                for name,df_group_i in df_group:
+                    y_ticks.append(name.left)
+                    temp = []
+                    vals_list = []
+                    err_list = []
+                    year_list = []
+                    for years in group_year_list:
+                        df_years_list = []
+                        for year in years:
+                            df_year = df_group_i[df_group_i[drought_year_col] == year]
+                            df_years_list.append(df_year)
+                        df_years = pd.concat(df_years_list)
+                        if len(df_years) == 0:
+                            temp.append(np.nan)
+                            continue
+                        vals = df_years[col].tolist()
+                        vals = np.array(vals)
+                        # vals_mean = np.nanmean(vals)
+                        vals = vals[vals < (1 - threshold)]
+                        # vals = vals[vals > (1 + threshold)]
+                        ratio = len(vals) / len(df_years) * 100
+                        year_list.append(f'{years[0]}-{years[-1]}')
+                        # year_list.append(f'{years[0]}')
+                        temp.append(ratio)
+                        # temp.append(vals_mean)
+                    matrix.append(temp)
+                matrix = np.array(matrix)
+                plt.figure(figsize=(12, 8))
+                plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0, vmax=55)
+                # plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0.95, vmax=1.05)
+                plt.colorbar()
+                plt.xticks(range(len(year_list)), year_list, rotation=45, ha='right')
+                plt.yticks(range(len(y_ticks)), y_ticks)
+                plt.ylabel('Ecological Stress Index\n(Water-limited --> Energy-limited)')
+                plt.title(f'{drt} {col}')
+                plt.tight_layout()
+                outf = join(outdir, f'{drt} {col}.png')
+                # plt.show()
+                plt.savefig(outf)
+                plt.close()
+
 
     def every_10_year(self):
         outdir = join(self.this_class_png, 'every_10_year')
