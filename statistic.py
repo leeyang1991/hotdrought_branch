@@ -1198,7 +1198,8 @@ class Drought_events_proess:
 
     def run(self):
         # self.gen_variables_in_drought_proess_monthly()
-        self.plot_variables_in_drought_proess_monthly()
+        # self.plot_variables_in_drought_proess_monthly()
+        self.plot_variables_in_drought_proess_monthly_ELI()
         pass
 
     def gen_variables_in_drought_proess_monthly(self):
@@ -1313,11 +1314,71 @@ class Drought_events_proess:
                     plt.tight_layout()
                 plt.grid()
                 plt.legend()
-                # plt.show()
-                plt.savefig(outf,dpi=300)
-                plt.close()
+                plt.show()
+                # plt.savefig(outf,dpi=300)
+                # plt.close()
                 # exit()
 
+    def plot_variables_in_drought_proess_monthly_ELI(self):
+        outdir = join(self.this_class_png, 'plot_variables_in_drought_proess_monthly_ELI')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
+        cols = self.var_list
+        ltd_var = 'ELI_class'
+        drought_type_list = global_drought_type_list
+        gs = global_gs
+        df = T.load_df(dff)
+        ELI_col = 'ELI'
+        ELI_bins = np.linspace(-0.6, 0.6, 11)
+        # cmap = 'Paired'
+        cmap_str = 'Spectral_r'
+        # cmap = sns.color_palette(cmap_str, n_colors=110)
+        # T.plot_colors_palette(cmap)
+        # plt.show()
+        drought_type_color = {'normal-drought':T.gen_colors(len(ELI_bins)-1, cmap_str),
+                              'hot-drought':T.gen_colors(len(ELI_bins)-1, cmap_str)
+                              }
+
+        for col in cols:
+            for drt in drought_type_list:
+                plt.figure(figsize=(14, 6))
+                df_drt = df[df['drought_type'] == drt]
+                df_group, bins_list_str = T.df_bin(df_drt, ELI_col, ELI_bins)
+                flag = 0
+                for name, df_group_i in df_group:
+                    ELI_val_left = name.left
+                    ELI_val_right = name.right
+                    vals = df_group_i[f'{col}_monthly'].tolist()
+                    vals = np.array(vals)
+                    vals_clean = []
+                    for val in vals:
+                        if type(val) == float:
+                            continue
+                        vals_clean.append(val)
+                    vals_clean = np.array(vals_clean)
+                    # vals_err = np.nanstd(vals_clean,axis=0)
+                    vals_mean = np.nanmean(vals_clean,axis=0)
+                    date_list = []
+                    date_str_list = []
+                    # for year in range(1996,2005):
+                    for year in range(-4,5):
+                        # for month in range(1,13):
+                        for month in range(gs[0],gs[-1]+1):
+                            # date = datetime.datetime(year,month,1)
+                            # date_list.append(date)
+                            date_str = self.num_to_month(month)
+                            date_str_list.append(f'{year}-{date_str}')
+                    plt.plot(date_str_list,vals_mean,color=drought_type_color[drt][flag],label=f'{ELI_val_left}_{ELI_val_right}',lw=2)
+                    flag += 1
+                    plt.xticks(rotation=45,horizontalalignment='right')
+                plt.title(f'{col}_{drt}')
+                plt.grid()
+                plt.legend()
+                plt.tight_layout()
+                outf = join(outdir, f'{col}_{drt}.png')
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # plt.show()
 
 class Rt_Rs_relationship:
     '''
@@ -1384,11 +1445,11 @@ class Rt_Rs_relationship:
 
 def main():
     # Dataframe().run()
-    Hot_Normal_Rs_Rt().run()
+    # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    # Drought_events_proess().run()
+    Drought_events_proess().run()
     # Rt_Rs_relationship().run()
     pass
 
