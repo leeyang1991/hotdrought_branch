@@ -41,6 +41,11 @@ class GLobal_var:
         df = df[df['lat']>30]
         return df
 
+    def dff(self):
+        import statistic
+        dff = join(statistic.Dataframe().dff)
+        return dff
+
     def get_rs_rt_cols(self):
         post_n_list = [1, 2, 3, 4]
         cols = ['rt']
@@ -1552,7 +1557,7 @@ def main():
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
     # Resistance_Resilience().run()
-    gen_world_grid_shp()
+    # gen_world_grid_shp()
     pass
 
 

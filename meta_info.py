@@ -65,6 +65,10 @@ class Meta_information:
         return vars_info_dic
 
 global_drought_type_list = ['normal-drought', 'hot-drought']
+global_drought_type_color_dict = {
+    'normal-drought': 'blue',
+    'hot-drought': 'red',
+}
 global_ELI_class = ['Energy-Limited', 'Water-Limited']
 global_AI_class = ['Humid', 'Arid']
 land_tif = join(this_root,'conf/land.tif')
