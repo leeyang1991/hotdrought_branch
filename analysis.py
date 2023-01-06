@@ -196,10 +196,6 @@ class Growing_season:
         # return gs_dict
         return None
 
-    def constant_growing_season(self):
-        gs = list(range(4,11)) # April to October
-        return gs
-
     def peak_growing_season(self):
         dff = join(self.this_class_arr,'longterm_mean_phenology','longterm_mean_phenology.df')
         df = T.load_df(dff)
@@ -1242,8 +1238,8 @@ class Resistance_Resilience:
         # self.check_lag_and_scale()
         # self.gen_dataframe()
         df = self.__gen_df_init()
-        # df = self.add_max_lag_and_scale(df)
-        # df = self.cal_rt(df)
+        df = self.add_max_lag_and_scale(df)
+        df = self.cal_rt(df)
         df = self.cal_rs(df)
         # # self.rt_tif(df)
         #
@@ -1556,7 +1552,7 @@ def main():
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
-    # Resistance_Resilience().run()
+    Resistance_Resilience().run()
     # gen_world_grid_shp()
     pass
 

@@ -77,7 +77,7 @@ global_start_year,global_end_year = global_year_range.split('-')
 global_start_year = int(global_start_year)
 global_end_year = int(global_end_year)
 data_path_dict = Meta_information().path(global_year_range)
-global_gs = list(range(5,10))
+global_gs = list(range(5,11))
 
 global_lc_list = ('deciduous', 'evergreen', 'grass', 'shrubs')
 global_lc_marker_dict = {
