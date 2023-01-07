@@ -187,7 +187,7 @@ class Hot_Normal_Rs_Rt:
         pass
 
     def run(self):
-        # self.rs_rt_tif()
+        self.rs_rt_tif()
         #
         # self.rs_rt_bar()
         # self.rs_rt_hist()
@@ -197,7 +197,7 @@ class Hot_Normal_Rs_Rt:
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
         # self.rs_rt_area_ratio_bar()
-        self.rs_rt_area_ratio_ELI_matrix()
+        # self.rs_rt_area_ratio_ELI_matrix()
         # self.rs_rt_pfts_koppen_area_ratio_scatter()
         pass
 
@@ -393,11 +393,12 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_pfts_koppen_scatter(self):
         outdir = join(self.this_class_png, 'rs_rt_pfts_koppen_scatter')
         T.mk_dir(outdir)
-        rs_col = 'rt'
+        # rs_col = 'rt'
         # rs_col = 'ELI'
         # rs_col = 'rs_1'
         # rs_col = 'rs_2'
-        # rs_col = 'rs_4'
+        # rs_col = 'rs_3'
+        rs_col = 'rs_4'
         eli_col = 'ELI'
         # eli_col = 'max_scale'
         # eli_col = 'max_lag'
@@ -439,10 +440,16 @@ class Hot_Normal_Rs_Rt:
             plt.title(drt)
             plt.xlabel(eli_col)
             plt.ylabel(rs_col)
-        plt.show()
+            # plt.ylim(0.91, 1.02)
+            outf = join(outdir, f'{drt}-{eli_col}-{rs_col}-scatter.png')
+            plt.savefig(outf, dpi=300)
+            plt.close()
+        # plt.show()
 
 
     def rs_rt_pfts_koppen_area_ratio_scatter(self):
+        outdir = join(self.this_class_png, 'rs_rt_pfts_koppen_area_ratio_scatter')
+        T.mk_dir(outdir)
         df = GLobal_var().load_df()
         threshold = 0.05
         rs_cols = GLobal_var().get_rs_rt_cols()
@@ -466,7 +473,7 @@ class Hot_Normal_Rs_Rt:
                         vals = np.array(vals)
                         vals = vals[vals < (1 - threshold)]
                         # vals = vals[vals > (1 + threshold)]
-                        ratio = len(vals) / len(df_kp_copy)
+                        ratio = len(vals) / len(df_kp_copy) * 100
                         x = df_kp_copy[eli_col]
                         x = np.array(x)
                         x_mean = np.nanmean(x)
@@ -477,8 +484,11 @@ class Hot_Normal_Rs_Rt:
                 # plt.legend()
                 sns.regplot(xx, yy, scatter=False, color='gray')
                 plt.title(f'{drt} {rs_col}')
+                outf = join(outdir, f'{drt}-{rs_col}-area_ratio_scatter.png')
+                plt.savefig(outf, dpi=300)
+                plt.close()
                 # plt.ylim(-0.3,0.7)
-            plt.show()
+            # plt.show()
 
     def rs_rt_area_ratio_bar(self):
         outdir = join(self.this_class_png, 'rs_rt_area_ratio_bar')
@@ -1184,14 +1194,14 @@ class Rt_Rs_change_overtime:
                     # plt.show()
 
 
-class Drought_events_proess:
+class Drought_events_process:
     '''
     introduce NDVI, CSIF, VOD, VPD, SM, ET, T, P
     optimal Temperature?
     '''
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('Drought_events_proess', result_root_this_script, mode=2)
+            T.mk_class_dir('Drought_events_process', result_root_this_script, mode=2)
         # self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
         self.var_list = ['NDVI', 'VPD', 'ERA-SM', 'GLEAM-ET', ]
         pass
@@ -1306,6 +1316,7 @@ class Drought_events_proess:
                             date_str_list.append(f'{year}-{date_str}')
                     # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
                     # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    vals_mean = SMOOTH().smooth_convolve(vals_mean,window_len=7)
                     plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
                     plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
                     # plt.plot(date_list,vals_mean)
@@ -1314,9 +1325,9 @@ class Drought_events_proess:
                     plt.tight_layout()
                 plt.grid()
                 plt.legend()
-                plt.show()
-                # plt.savefig(outf,dpi=300)
-                # plt.close()
+                # plt.show()
+                plt.savefig(outf,dpi=300)
+                plt.close()
                 # exit()
 
     def plot_variables_in_drought_proess_monthly_ELI(self):
@@ -1368,6 +1379,7 @@ class Drought_events_proess:
                             # date_list.append(date)
                             date_str = self.num_to_month(month)
                             date_str_list.append(f'{year}-{date_str}')
+                    vals_mean = SMOOTH().smooth_convolve(vals_mean, window_len=7)
                     plt.plot(date_str_list,vals_mean,color=drought_type_color[drt][flag],label=f'{ELI_val_left}_{ELI_val_right}',lw=2)
                     flag += 1
                     plt.xticks(rotation=45,horizontalalignment='right')
@@ -1449,11 +1461,11 @@ class Over_shoot_drought:
         pass
 
     def run(self):
-        self.pick_overshoot()
+        # self.pick_overshoot()
         # self.gen_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly()
         # self.over_shoot_ratio_ELI()
-        # self.over_shoot_pfts_koppen_area_ratio_scatter()
+        self.over_shoot_pfts_koppen_area_ratio_scatter()
         # self.over_shoot_every_5_year_area_ratio()
         # self.rs_rt_vs_overshoot_ELI_matrix()
         # self.rt_vs_overshoot()
@@ -1559,54 +1571,57 @@ class Over_shoot_drought:
         dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
         ltd_var = 'ELI_class'
         drought_type_list = global_drought_type_list
+        limited_area = global_ELI_class_list
         over_shoot_list = [0,1]
         drought_type_color = {'normal-drought':'b','hot-drought':'r'}
         gs = global_gs
         df = T.load_df(dff)
         col = 'NDVI'
-        for over_shoot in over_shoot_list:
-            df_os = df[df['over_shoot'] == over_shoot]
-            fname = f'{over_shoot}_{col}'
-            print(fname)
-            outf = join(outdir, f'{fname}.png')
-            plt.figure(figsize=(14, 6))
-            for drt in drought_type_list:
-                df_drt = df_os[df_os['drought_type'] == drt]
-                vals = df_drt[f'{col}_monthly'].tolist()
-                vals = np.array(vals)
-                vals_clean = []
-                for val in vals:
-                    if type(val) == float:
-                        continue
-                    vals_clean.append(val)
-                vals_clean = np.array(vals_clean)
-                vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
-                # vals_err = np.nanstd(vals_clean,axis=0)
-                vals_mean = np.nanmean(vals_clean,axis=0)
-                date_list = []
-                date_str_list = []
-                # for year in range(1996,2005):
-                for year in range(-4,5):
-                    # for month in range(1,13):
-                    for month in range(gs[0],gs[-1]+1):
-                        # date = datetime.datetime(year,month,1)
-                        # date_list.append(date)
-                        date_str = Drought_events_proess().num_to_month(month)
-                        date_str_list.append(f'{year}-{date_str}')
-                # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
-                # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
-                plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
-                plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
-                # plt.plot(date_list,vals_mean)
-                plt.title(fname)
-                plt.xticks(rotation=45,horizontalalignment='right')
-                plt.tight_layout()
-            plt.grid()
-            plt.legend()
-            # plt.show()
-            plt.savefig(outf,dpi=300)
-            plt.close()
-            # exit()
+        for ltd in limited_area:
+            df_ltd = df[df[ltd_var] == ltd]
+            for over_shoot in over_shoot_list:
+                df_os = df_ltd[df_ltd['over_shoot'] == over_shoot]
+                fname = f'{over_shoot}_{col}_{ltd}'
+                print(fname)
+                outf = join(outdir, f'{fname}.png')
+                plt.figure(figsize=(14, 6))
+                for drt in drought_type_list:
+                    df_drt = df_os[df_os['drought_type'] == drt]
+                    vals = df_drt[f'{col}_monthly'].tolist()
+                    vals = np.array(vals)
+                    vals_clean = []
+                    for val in vals:
+                        if type(val) == float:
+                            continue
+                        vals_clean.append(val)
+                    vals_clean = np.array(vals_clean)
+                    vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
+                    # vals_err = np.nanstd(vals_clean,axis=0)
+                    vals_mean = np.nanmean(vals_clean,axis=0)
+                    date_list = []
+                    date_str_list = []
+                    # for year in range(1996,2005):
+                    for year in range(-4,5):
+                        # for month in range(1,13):
+                        for month in range(gs[0],gs[-1]+1):
+                            # date = datetime.datetime(year,month,1)
+                            # date_list.append(date)
+                            date_str = Drought_events_proess().num_to_month(month)
+                            date_str_list.append(f'{year}-{date_str}')
+                    # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
+                    # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
+                    # plt.plot(date_list,vals_mean)
+                    plt.title(fname)
+                    plt.xticks(rotation=45,horizontalalignment='right')
+                    plt.tight_layout()
+                plt.grid()
+                plt.legend()
+                # plt.show()
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # exit()
 
     def over_shoot_ratio_ELI(self):
         df = GLobal_var().load_df()
@@ -1615,10 +1630,13 @@ class Over_shoot_drought:
         ltd_var = 'ELI_class'
         drought_type_list = global_drought_type_list
         ELI_col = 'ELI'
+
         # ELI_bins = np.linspace(-0.6, 0.6, 41)
-        ELI_bins = np.arange(-0.6, 0.65, 0.1)
+        ELI_bins = np.arange(-0.8, 0.66, 0.05)
         for drt in drought_type_list:
             df_drt = df[df['drought_type'] == drt]
+            eli_vals = df_drt[ELI_col].tolist()
+            eli_vals = np.array(eli_vals)
             df_group,bins_list_str = T.df_bin(df_drt, ELI_col, ELI_bins)
             x = []
             y = []
@@ -1632,16 +1650,33 @@ class Over_shoot_drought:
                 x.append(left)
                 y.append(ratio)
             # plt.figure(figsize=(14, 6))
+            x = np.array(x)
+            y = np.array(y)
+            y = SMOOTH().smooth_convolve(y,window_len=7)
             plt.plot(x,y,c=global_drought_type_color_dict[drt],label=drt)
             plt.scatter(x,y,c=global_drought_type_color_dict[drt])
         plt.title('over_shoot_ratio_ELI')
-        plt.grid()
+        # plt.grid()
         plt.legend()
-        plt.tight_layout()
+        plt.ylabel('over_shoot_ratio (%)')
+        plt.xlabel('ELI (Energy-limited --> Water-limited)')
+
         outf = join(outdir, 'over_shoot_ratio_ELI.png')
+        # plt.savefig(outf,dpi=300)
+        # plt.close()
+        # plt.show()
+        plt.twinx()
+        eli_vals = df[ELI_col].tolist()
+        eli_vals = np.array(eli_vals)
+        # plt.hist(eli_vals, bins=100, alpha=0.5,density=True,range=(ELI_bins[0],ELI_bins[-1]))
+        x,y = Plot().plot_hist_smooth(eli_vals,bins=100, alpha=0.0,range=(ELI_bins[0],ELI_bins[-1]))
+        # plt.plot(x,y)
+        plt.fill_between(x,y,0,facecolor='gray',alpha=0.2)
+        plt.ylabel('ELI density')
+        plt.tight_layout()
+        outf = join(outdir, 'eli_hist.png')
         plt.savefig(outf,dpi=300)
         plt.close()
-        # plt.show()
 
     def over_shoot_pfts_koppen_area_ratio_scatter(self):
         outdir = join(self.this_class_png, 'over_shoot_pfts_koppen_area_ratio_scatter')
@@ -1651,7 +1686,8 @@ class Over_shoot_drought:
         drought_type_list = global_drought_type_list
         lc_list = global_lc_list
         koppen_list = global_koppen_list
-        eli_col = 'ELI'
+        # eli_col = 'ELI'
+        eli_col = 'late_mean'
         # eli_col = 'max_lag'
         # eli_col = 'rt'
         # eli_col = 'lat'
@@ -1799,10 +1835,10 @@ class Over_shoot_drought:
         rs_cols = GLobal_var().get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         # rs_bins = np.arange(0.9, 1.1, 0.02)
-        # rs_bins = np.arange(-2.5, -0., 0.2)
+        rs_bins = np.arange(-2.5, -0., 0.2)
         # rs_bins = np.arange(-2.5, 2.5, 0.05)
         # rs_bins = np.arange(-2.5,0, 0.1)
-        rs_bins = np.arange(-0,2.5, 0.1)
+        # rs_bins = np.arange(-0,2.5, 0.1)
         # print(len(rs_bins))
         # exit()
         # rs_cols = ['rt']
@@ -1810,10 +1846,10 @@ class Over_shoot_drought:
         # rs_cols = ['rs_2']
         # rs_cols = ['rs_3']
         # rs_cols = ['rs_4']
-        # rs_cols = ['late_min']
+        rs_cols = ['late_min']
         # rs_cols = ['late_mean']
         # rs_cols = ['drought_year_mean']
-        rs_cols = ['delta']
+        # rs_cols = ['delta']
         for drt in drought_type_list:
             df_drt = df[df['drought_type'] == drt]
             for col in rs_cols:
@@ -1845,13 +1881,13 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    # Hot_Normal_Rs_Rt().run()
+    Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    # Drought_events_proess().run()
+    # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    Over_shoot_drought().run()
+    # Over_shoot_drought().run()
     pass
 
 
