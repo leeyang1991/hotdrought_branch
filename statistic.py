@@ -866,7 +866,9 @@ class Rt_Rs_change_overtime:
         # self.every_1_year_area_ratio_matrix()
         # self.every_10_year()
         # self.two_periods()
-        self.plot_two_periods()
+        # self.plot_two_periods_koppen_PFTs()
+        # self.plot_two_periods_water_energy_PFTs()
+        self.plot_two_periods_water_energy_PFTs_area()
         pass
 
     def every_year(self):
@@ -1238,9 +1240,9 @@ class Rt_Rs_change_overtime:
                 T.df_to_excel(df_result,outf)
                 # exit()
 
-    def plot_two_periods(self):
+    def plot_two_periods_koppen_PFTs(self):
         fdir = join(self.this_class_arr, 'two_periods')
-        outdir = join(self.this_class_png,'two_periods')
+        outdir = join(self.this_class_png,'two_periods_koppen_PFTs')
         T.mk_dir(outdir)
         rt_col = 'rt'
         rs_cols = GLobal_var().get_rs_rt_cols()
@@ -1280,6 +1282,101 @@ class Rt_Rs_change_overtime:
                 plt.close()
                 # plt.show()
 
+
+    def plot_two_periods_water_energy_PFTs(self):
+        fdir = join(self.this_class_arr, 'two_periods')
+        outdir = join(self.this_class_png,'two_periods_water_energy_PFTs')
+        T.mk_dir(outdir)
+        rt_col = 'rt'
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols.remove(rt_col)
+        drought_type_list = global_drought_type_list
+        # drought_type_list = global_drought_type_list[1:]
+        lc_list = global_lc_list
+        ltd_list = global_ELI_class_list
+        for drt in drought_type_list:
+            for rs_col in rs_cols:
+                fname = f'{drt}_{rs_col}.df'
+                df = T.load_df(join(fdir, fname))
+                plt.figure(figsize=(10,10))
+                for lc in lc_list:
+                    df_lc = df[df['landcover_GLC'] == lc]
+                    for ltd in ltd_list:
+                        df_ltd = df_lc[df_lc['ELI_class'] == ltd]
+                        rt_1 = df_ltd[f'{rt_col}-1']
+                        rt_2 = df_ltd[f'{rt_col}-2']
+                        rs_1 = df_ltd[f'{rs_col}-1']
+                        rs_2 = df_ltd[f'{rs_col}-2']
+                        rt_1_mean = np.nanmean(rt_1)
+                        rt_2_mean = np.nanmean(rt_2)
+                        rs_1_mean = np.nanmean(rs_1)
+                        rs_2_mean = np.nanmean(rs_2)
+                        # plt.plot([rt_1,rt_2],[rs_1,rs_2],color='k',alpha=0.1)
+                        plt.plot([rt_1_mean, rt_2_mean], [rs_1_mean, rs_2_mean],label=f'{ltd}',zorder=99,color=global_ELI_class_color_dict[ltd],lw=4,alpha=0.3)
+                        plt.arrow(rt_1_mean, rs_1_mean, rt_2_mean - rt_1_mean, rs_2_mean - rs_1_mean,color='k',alpha=0.1)
+                        plt.text(rt_1_mean, rs_1_mean, f'{lc}', fontsize=8)
+                plt.title(f'{drt} {rs_col}')
+                plt.xlabel(f'{rt_col}')
+                plt.ylabel(f'{rs_col}')
+                plt.axis('equal')
+                # plt.legend()
+                outf = join(outdir, f'{drt}_{rs_col}.png')
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # plt.show()
+
+    def plot_two_periods_water_energy_PFTs_area(self):
+        fdir = join(self.this_class_arr, 'two_periods')
+        outdir = join(self.this_class_png,'two_periods_water_energy_PFTs_area')
+        threshold = global_threshold
+        T.mk_dir(outdir)
+        rt_col = 'rt'
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols.remove(rt_col)
+        drought_type_list = global_drought_type_list
+        # drought_type_list = global_drought_type_list[1:]
+        lc_list = global_lc_list
+        ltd_list = global_ELI_class_list
+        for drt in drought_type_list:
+            for rs_col in rs_cols:
+                fname = f'{drt}_{rs_col}.df'
+                df = T.load_df(join(fdir, fname))
+                plt.figure(figsize=(4,4))
+                for lc in lc_list:
+                    df_lc = df[df['landcover_GLC'] == lc]
+                    for ltd in ltd_list:
+                        df_ltd = df_lc[df_lc['ELI_class'] == ltd]
+                        rt_1 = df_ltd[f'{rt_col}-1']
+                        rt_2 = df_ltd[f'{rt_col}-2']
+                        rs_1 = df_ltd[f'{rs_col}-1']
+                        rs_2 = df_ltd[f'{rs_col}-2']
+                        rt_1 = rt_1[rt_1 < (1 - threshold)]
+                        rt_2 = rt_2[rt_2 < (1 - threshold)]
+                        rs_1 = rs_1[rs_1 < (1 - threshold)]
+                        rs_2 = rs_2[rs_2 < (1 - threshold)]
+                        # vals = vals[vals > (1 + threshold)]
+                        ratio_rt_1 = len(rt_1) / len(df_ltd) * 100
+                        ratio_rt_2 = len(rt_2) / len(df_ltd) * 100
+                        ratio_rs_1 = len(rs_1) / len(df_ltd) * 100
+                        ratio_rs_2 = len(rs_2) / len(df_ltd) * 100
+
+                        # plt.plot([rt_1,rt_2],[rs_1,rs_2],color='k',alpha=0.1)
+                        # plt.plot([ratio_rt_1, ratio_rt_2], [ratio_rs_1, ratio_rs_2],label=f'{ltd}',zorder=99,color=global_ELI_class_color_dict[ltd],lw=4,alpha=0.0)
+                        # plt.xlim(-10, 70)
+                        # plt.ylim(-10, 30)
+                        plt.arrow(ratio_rt_1, ratio_rs_1, ratio_rt_2 - ratio_rt_1, ratio_rs_2 - ratio_rs_1,color=global_ELI_class_color_dict[ltd],head_width=1.5,head_length=1.5)
+                        plt.text(ratio_rt_2, ratio_rs_2, f'{lc}', fontsize=8)
+
+                plt.title(f'{drt} {rs_col}')
+                plt.xlabel(f'{rt_col}')
+                plt.ylabel(f'{rs_col}')
+                # plt.axis('equal')
+                plt.tight_layout()
+                # plt.legend()
+                outf = join(outdir, f'{drt}_{rs_col}.png')
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # plt.show()
 
 class Drought_events_process:
     '''

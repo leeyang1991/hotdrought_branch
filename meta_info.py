@@ -70,6 +70,10 @@ global_drought_type_color_dict = {
     'hot-drought': 'red',
 }
 global_ELI_class = ['Energy-Limited', 'Water-Limited']
+global_ELI_class_color_dict = {
+    'Energy-Limited': 'blue',
+    'Water-Limited': 'red',
+}
 global_AI_class = ['Humid', 'Arid']
 land_tif = join(this_root,'conf/land.tif')
 global_year_range = '1982-2015'
