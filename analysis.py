@@ -39,6 +39,7 @@ class GLobal_var:
             df[df[col] > 1.4] = np.nan
             df[df[col] < 0.6] = np.nan
         df = df[df['lat']>30]
+        df = df.drop_duplicates()
         return df
 
     def dff(self):
@@ -1528,6 +1529,7 @@ def line_to_shp(inputlist,outSHPfn):
 def gen_world_grid_shp():
     x_interval = 30
     y_interval = 30
+    
     outf = join(this_root,'shp/world_line/world_grid.shp')
     lon_list = np.arange(-180,180,x_interval)
     lat_list = np.arange(-90,90,y_interval)
@@ -1553,6 +1555,7 @@ def main():
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
     Resistance_Resilience().run()
+
     # gen_world_grid_shp()
     pass
 

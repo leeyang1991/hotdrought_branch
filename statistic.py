@@ -862,9 +862,11 @@ class Rt_Rs_change_overtime:
         # self.every_year()
         # self.every_5_year()
         # self.every_5_year_area_ratio()
-        self.every_5_year_area_ratio_matrix()
+        # self.every_5_year_area_ratio_matrix()
         # self.every_1_year_area_ratio_matrix()
         # self.every_10_year()
+        # self.two_periods()
+        self.plot_two_periods()
         pass
 
     def every_year(self):
@@ -1192,6 +1194,91 @@ class Rt_Rs_change_overtime:
                     plt.savefig(join(outdir, f'{title}.png'))
                     plt.close()
                     # plt.show()
+
+    def two_periods(self):
+        outdir = join(self.this_class_arr, 'two_periods')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        rt_col = 'rt'
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols.remove(rt_col)
+        # print(rs_col)
+        # exit()
+        first_part_year_list = list(range(1982,2000))
+        second_part_year_list = list(range(2000,2016))
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group_dict = T.df_groupby(df_drt, 'pix')
+            spatial_dict = {}
+            for rs_col in rs_cols:
+                for pix in tqdm(df_group_dict,total=len(df_group_dict),desc=f'{drt} {rs_col}'):
+                    df_i = df_group_dict[pix]
+                    df_first_part = df_i[df_i['drought_year'].isin(first_part_year_list)]
+                    df_second_part = df_i[df_i['drought_year'].isin(second_part_year_list)]
+                    rt_first_part = df_first_part[rt_col].tolist()
+                    rt_second_part = df_second_part[rt_col].tolist()
+                    rs_first_part = df_first_part[rs_col].tolist()
+                    rs_second_part = df_second_part[rs_col].tolist()
+                    rt_first_part_mean = np.nanmean(rt_first_part)
+                    rt_second_part_mean = np.nanmean(rt_second_part)
+                    rs_first_part_mean = np.nanmean(rs_first_part)
+                    rs_second_part_mean = np.nanmean(rs_second_part)
+                    spatial_dict[pix] = {
+                        'rt-1': rt_first_part_mean,
+                        'rt-2': rt_second_part_mean,
+                        f'{rs_col}-1': rs_first_part_mean,
+                        f'{rs_col}-2': rs_second_part_mean,
+                    }
+                df_result = T.dic_to_df(spatial_dict,'pix')
+                df_result = df_result.dropna()
+                df_result = Dataframe_func(df_result).df
+                outf = join(outdir, f'{drt}_{rs_col}.df')
+                T.save_df(df_result, outf)
+                T.df_to_excel(df_result,outf)
+                # exit()
+
+    def plot_two_periods(self):
+        fdir = join(self.this_class_arr, 'two_periods')
+        outdir = join(self.this_class_png,'two_periods')
+        T.mk_dir(outdir)
+        rt_col = 'rt'
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols.remove(rt_col)
+        drought_type_list = global_drought_type_list
+        # drought_type_list = global_drought_type_list[1:]
+        lc_list = global_lc_list
+        kp_list = global_koppen_list
+        for drt in drought_type_list:
+            for rs_col in rs_cols:
+                fname = f'{drt}_{rs_col}.df'
+                df = T.load_df(join(fdir, fname))
+                plt.figure(figsize=(10,10))
+                for lc in lc_list:
+                    df_lc = df[df['landcover_GLC'] == lc]
+                    for kp in kp_list:
+                        df_kp = df_lc[df_lc['Koppen'] == kp]
+                        rt_1 = df_kp[f'{rt_col}-1']
+                        rt_2 = df_kp[f'{rt_col}-2']
+                        rs_1 = df_kp[f'{rs_col}-1']
+                        rs_2 = df_kp[f'{rs_col}-2']
+                        rt_1_mean = np.nanmean(rt_1)
+                        rt_2_mean = np.nanmean(rt_2)
+                        rs_1_mean = np.nanmean(rs_1)
+                        rs_2_mean = np.nanmean(rs_2)
+                        # plt.plot([rt_1,rt_2],[rs_1,rs_2],color='k',alpha=0.1)
+                        plt.plot([rt_1_mean, rt_2_mean], [rs_1_mean, rs_2_mean],label=f'{kp}',zorder=99,color=global_koppen_color_dict[kp],lw=4,alpha=0.3)
+                        plt.arrow(rt_1_mean, rs_1_mean, rt_2_mean - rt_1_mean, rs_2_mean - rs_1_mean,color='k',alpha=0.1)
+                        plt.text(rt_1_mean, rs_1_mean, f'{lc}', fontsize=8)
+                plt.title(f'{drt} {rs_col}')
+                plt.xlabel(f'{rt_col}')
+                plt.ylabel(f'{rs_col}')
+                plt.axis('equal')
+                # plt.legend()
+                outf = join(outdir, f'{drt}_{rs_col}.png')
+                plt.savefig(outf,dpi=300)
+                plt.close()
+                # plt.show()
 
 
 class Drought_events_process:
@@ -1606,7 +1693,7 @@ class Over_shoot_drought:
                         for month in range(gs[0],gs[-1]+1):
                             # date = datetime.datetime(year,month,1)
                             # date_list.append(date)
-                            date_str = Drought_events_proess().num_to_month(month)
+                            date_str = Drought_events_process().num_to_month(month)
                             date_str_list.append(f'{year}-{date_str}')
                     # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
                     # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
@@ -1881,10 +1968,10 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    Hot_Normal_Rs_Rt().run()
+    # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
-    # Rt_Rs_change_overtime().run()
+    Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
     # Over_shoot_drought().run()
