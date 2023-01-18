@@ -187,12 +187,12 @@ class Hot_Normal_Rs_Rt:
         pass
 
     def run(self):
-        self.rs_rt_tif()
+        # self.rs_rt_tif()
         #
         # self.rs_rt_bar()
         # self.rs_rt_hist()
 
-        # self.rs_rt_bar_water_energy_limited()
+        self.rs_rt_bar_water_energy_limited()
         # self.rs_rt_bar_Humid_Arid()
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
@@ -253,7 +253,7 @@ class Hot_Normal_Rs_Rt:
         plt.ylim(0.97, 1.01)
         plt.tight_layout()
         # plt.show()
-        outf = join(outdir, 'rs_rt_bar.png')
+        outf = join(outdir, 'rs_rt_bar.pdf')
         plt.savefig(outf, dpi=300)
 
     def rs_rt_bar_water_energy_limited(self):
@@ -289,6 +289,7 @@ class Hot_Normal_Rs_Rt:
             # plt.show()
             outf = join(outdir, f'{ltd}-rs_rt_bar.png')
             plt.savefig(outf, dpi=300)
+            plt.close()
 
     def rs_rt_bar_Humid_Arid(self):
         outdir = join(self.this_class_png, 'rs_rt_bar_Humid_Arid')
@@ -358,6 +359,7 @@ class Hot_Normal_Rs_Rt:
             # plt.show()
             outf = join(outdir, f'{ltd}-rs_rt_bar.png')
             plt.savefig(outf, dpi=300)
+            plt.close()
 
     def rs_rt_hist(self):
         outdir = join(self.this_class_png, 'rs_rt_hist')
@@ -395,10 +397,10 @@ class Hot_Normal_Rs_Rt:
         T.mk_dir(outdir)
         # rs_col = 'rt'
         # rs_col = 'ELI'
-        # rs_col = 'rs_1'
+        rs_col = 'rs_1'
         # rs_col = 'rs_2'
         # rs_col = 'rs_3'
-        rs_col = 'rs_4'
+        # rs_col = 'rs_4'
         eli_col = 'ELI'
         # eli_col = 'max_scale'
         # eli_col = 'max_lag'
@@ -441,10 +443,11 @@ class Hot_Normal_Rs_Rt:
             plt.xlabel(eli_col)
             plt.ylabel(rs_col)
             # plt.ylim(0.91, 1.02)
-            outf = join(outdir, f'{drt}-{eli_col}-{rs_col}-scatter.png')
+            # outf = join(outdir, f'{drt}-{eli_col}-{rs_col}-scatter.png')
+            outf = join(outdir, f'{drt}-{eli_col}-{rs_col}-scatter.pdf')
             plt.savefig(outf, dpi=300)
             plt.close()
-        # plt.show()
+        plt.show()
 
 
     def rs_rt_pfts_koppen_area_ratio_scatter(self):
@@ -481,12 +484,16 @@ class Hot_Normal_Rs_Rt:
                         yy.append(ratio)
                         plt.scatter(x_mean, ratio, marker=global_lc_marker_dict[lc], color=global_koppen_color_dict[kp],
                                     label=f'{kp}-{lc}', edgecolors='k', zorder=0, s=100)
-                # plt.legend()
+                plt.legend()
                 sns.regplot(xx, yy, scatter=False, color='gray')
                 plt.title(f'{drt} {rs_col}')
-                outf = join(outdir, f'{drt}-{rs_col}-area_ratio_scatter.png')
+                # outf = join(outdir, f'{drt}-{rs_col}-area_ratio_scatter.png')
+                # outf = join(outdir, f'{drt}-{rs_col}-area_ratio_scatter.pdf')
+                outf = join(outdir, f'legend.pdf')
                 plt.savefig(outf, dpi=300)
                 plt.close()
+                exit()
+                # plt.show()
                 # plt.ylim(-0.3,0.7)
             # plt.show()
 
@@ -522,7 +529,8 @@ class Hot_Normal_Rs_Rt:
         # sns.pointplot(x='rs_col', y='ratio', hue='drought_type', data=data,kind='bar')
         sns.barplot(x='rs_col', y='ratio', hue='drought_type', data=data)
         # plt.show()
-        outf = join(outdir, 'rs_rt_area_ratio_bar.png')
+        # outf = join(outdir, 'rs_rt_area_ratio_bar.png')
+        outf = join(outdir, 'rs_rt_area_ratio_bar.pdf')
         plt.savefig(outf, dpi=300)
         plt.close()
 
@@ -566,9 +574,11 @@ class Hot_Normal_Rs_Rt:
             plt.ylabel('Ecological Stress Index\n(Water-limited --> Energy-limited)')
             plt.title(f'{drt}')
             plt.tight_layout()
-            outf = join(outdir, f'{drt}.png')
+            # outf = join(outdir, f'{drt}.png')
+            outf = join(outdir, f'{drt}.pdf')
             plt.savefig(outf, dpi=300)
             plt.close()
+            plt.show()
         # plt.show()
 
 class ELI_AI_gradient:
@@ -580,11 +590,12 @@ class ELI_AI_gradient:
 
     def run(self):
         self.lag_ELI()
-        self.lag_AI()
-        self.scale_ELI()
-        self.scale_AI()
-        self.rt_rs_ELI()
-        self.rt_rs_AI()
+        # self.lag_AI()
+        # self.scale_ELI()
+        # self.scale_AI()
+        # self.rt_rs_ELI()
+        # self.rt_rs_AI()
+        # self.max_r_ELI()
         pass
 
     def lag_ELI(self):
@@ -625,7 +636,8 @@ class ELI_AI_gradient:
         plt.ylabel('Lag (years)')
         plt.tight_layout()
 
-        outf = join(outdir, 'lag_ELI.png')
+        # outf = join(outdir, 'lag_ELI.png')
+        outf = join(outdir, 'lag_ELI.pdf')
         plt.savefig(outf, dpi=300)
 
 
@@ -708,7 +720,8 @@ class ELI_AI_gradient:
         plt.ylabel('SPEI scale')
         plt.tight_layout()
 
-        outf = join(outdir, 'scale_ELI.png')
+        # outf = join(outdir, 'scale_ELI.png')
+        outf = join(outdir, 'scale_ELI.pdf')
         plt.savefig(outf, dpi=300)
 
     def scale_AI(self):
@@ -850,6 +863,53 @@ class ELI_AI_gradient:
                 plt.savefig(outf, dpi=300)
                 plt.close()
 
+    def max_r_ELI(self):
+        outdir = join(self.this_class_png, 'max_r_ELI')
+        T.mk_dir(outdir)
+        df = GLobal_var().load_df()
+        df_group_dict = T.df_groupby(df, 'pix')
+
+        lag_list = []
+        ELI_list = []
+        spatial_dict = {}
+        for pix in df_group_dict:
+            df_pix = df_group_dict[pix]
+            lag = df_pix['max_r']
+            ELI = df_pix['ELI']
+            lag_mean = np.nanmean(lag)
+            ELI_mean = np.nanmean(ELI)
+            lag_list.append(lag_mean)
+            ELI_list.append(ELI_mean)
+            spatial_dict[pix] = lag_mean
+        # arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        # plt.imshow(arr, cmap='jet',vmin=0,vmax=1)
+        # plt.colorbar()
+        # plt.show()
+
+        df_new = pd.DataFrame()
+        df_new['max_r'] = lag_list
+        df_new['ELI'] = ELI_list
+        bins = np.linspace(-0.6, 0.6, 20)
+        df_group, bins_list_str = T.df_bin(df_new, 'ELI', bins)
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['max_r'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            # err = np.nanstd(vals)
+            x_list.append(name.left)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(6,3))
+        plt.errorbar(x_list, y_list, yerr=err_list)
+        plt.xlabel('ELI (energy-limited --> water-limited)')
+        plt.ylabel('Correlation')
+        plt.tight_layout()
+
+        outf = join(outdir, 'r_ELI.pdf')
+        plt.savefig(outf, dpi=300)
 
 class Rt_Rs_change_overtime:
 
@@ -859,7 +919,7 @@ class Rt_Rs_change_overtime:
         pass
 
     def run(self):
-        # self.every_year()
+        self.every_year()
         # self.every_5_year()
         # self.every_5_year_area_ratio()
         # self.every_5_year_area_ratio_matrix()
@@ -868,7 +928,7 @@ class Rt_Rs_change_overtime:
         # self.two_periods()
         # self.plot_two_periods_koppen_PFTs()
         # self.plot_two_periods_water_energy_PFTs()
-        self.plot_two_periods_water_energy_PFTs_area()
+        # self.plot_two_periods_water_energy_PFTs_area()
         pass
 
     def every_year(self):
@@ -1373,7 +1433,7 @@ class Rt_Rs_change_overtime:
                 # plt.axis('equal')
                 plt.tight_layout()
                 # plt.legend()
-                outf = join(outdir, f'{drt}_{rs_col}.png')
+                outf = join(outdir, f'{drt}_{rs_col}.pdf')
                 plt.savefig(outf,dpi=300)
                 plt.close()
                 # plt.show()

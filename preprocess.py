@@ -1379,8 +1379,8 @@ class GLEAM_SMRoot:
         # self.nc_to_tif()
         # self.resample()
         # self.tif_to_perpix_1982_2015()
-        self.anomaly()
-        # self.detrend()
+        # self.anomaly()
+        self.detrend()
         pass
 
 

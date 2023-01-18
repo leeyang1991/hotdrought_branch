@@ -862,13 +862,12 @@ class Max_Scale_and_Lag_correlation_SPI:
         print('loading',dff)
         df = T.load_df(dff)
         print('loaded')
-        # exit()
         cols = df.columns.tolist()
         cols.remove('pix')
         max_scale_dict = {}
         max_month_dict = {}
         max_lag_dict = {}
-        # max_r = {}
+        max_r_dict = {}
         for i,row in tqdm(df.iterrows(),total=len(df)):
             pix = row.pix
             dict_i = {}
@@ -920,19 +919,22 @@ class Max_Scale_and_Lag_correlation_SPI:
             max_scale = int(max_scale)
             max_mon = int(max_mon)
             max_lag = int(max_lag)
+            # r = lag_mean_dict[max_lag]
 
             max_scale_dict[pix] = max_scale
             max_month_dict[pix] = max_mon
             max_lag_dict[pix] = max_lag
-            # max_r[pix] = r
+            r_list = row[cols].tolist()
+            max_r = np.nanmax(r_list)
+            max_r_dict[pix] = max_r
         outf_max_scale = join(outdir,f'{method}_max_scale.tif')
         outf_max_month = join(outdir,f'{method}_max_month.tif')
         outf_max_lag = join(outdir,f'{method}_max_lag.tif')
-        # outf_max_r = join(outdir,f'{method}_max_r.tif')
+        outf_max_r = join(outdir,f'{method}_max_r.tif')
         DIC_and_TIF().pix_dic_to_tif(max_scale_dict,outf_max_scale)
         DIC_and_TIF().pix_dic_to_tif(max_month_dict,outf_max_month)
         DIC_and_TIF().pix_dic_to_tif(max_lag_dict,outf_max_lag)
-        # DIC_and_TIF().pix_dic_to_tif(max_r,outf_max_r)
+        DIC_and_TIF().pix_dic_to_tif(max_r_dict,outf_max_r)
 
     def __spi_scale_and_month_dict(self):
         import preprocess
@@ -1239,9 +1241,10 @@ class Resistance_Resilience:
         # self.check_lag_and_scale()
         # self.gen_dataframe()
         df = self.__gen_df_init()
-        df = self.add_max_lag_and_scale(df)
-        df = self.cal_rt(df)
-        df = self.cal_rs(df)
+        # df = self.add_max_lag_and_scale(df)
+        df = self.add_max_r(df)
+        # df = self.cal_rt(df)
+        # df = self.cal_rs(df)
         # # self.rt_tif(df)
         #
         T.save_df(df, self.dff)
@@ -1298,6 +1301,7 @@ class Resistance_Resilience:
         max_scale_and_lag_df = self.__get_max_scale_and_lag()
         max_lag_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_lag')
         max_scale_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_scale')
+        # max_r_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_r')
         print('adding max_scale...')
         df = T.add_spatial_dic_to_df(df, max_scale_spatial_dict, 'max_scale')
         # filter df with max scale
@@ -1314,8 +1318,20 @@ class Resistance_Resilience:
 
         print('adding max_lag...')
         df = T.add_spatial_dic_to_df(df, max_lag_spatial_dict, 'max_lag')
+        # df = T.add_spatial_dic_to_df(df, max_r_spatial_dict, 'max_r')
 
         return df
+
+    def add_max_r(self,df):
+        max_scale_and_lag_df = self.__get_max_scale_and_lag()
+        max_r_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_r')
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(max_r_spatial_dict)
+        # plt.imshow(arr, cmap='jet',vmin=0,vmax=1)
+        # plt.colorbar()
+        # plt.show()
+        df = T.add_spatial_dic_to_df(df, max_r_spatial_dict, 'max_r')
+        return df
+        pass
 
     def cal_rt(self,df):
         gs = global_gs
@@ -1473,13 +1489,16 @@ class Resistance_Resilience:
             return df
         max_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,f'mean_max_scale_month_lag/{method}')
         max_scale_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,f'mean_max_scale_month_lag/{method}')
+        max_r_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif,f'mean_max_scale_month_lag/{method}')
         max_lag_f = join(max_lag_fdir,f'{method}_max_lag.tif')
         max_scale_f = join(max_scale_fdir,f'{method}_max_scale.tif')
+        max_r_f = join(max_r_fdir,f'{method}_max_r.tif')
 
         max_lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_lag_f)
         max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
+        max_r_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_r_f)
 
-        dict_all = {'max_lag':max_lag_spatial_dict,'max_scale':max_scale_spatial_dict}
+        dict_all = {'max_lag':max_lag_spatial_dict,'max_scale':max_scale_spatial_dict,'max_r':max_r_spatial_dict}
 
         df = T.spatial_dics_to_df(dict_all)
         T.save_df(df,outf)
