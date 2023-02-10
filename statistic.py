@@ -1452,8 +1452,8 @@ class Drought_events_process:
 
     def run(self):
         # self.gen_variables_in_drought_proess_monthly()
-        # self.plot_variables_in_drought_proess_monthly()
-        self.plot_variables_in_drought_proess_monthly_ELI()
+        self.plot_variables_in_drought_proess_monthly()
+        # self.plot_variables_in_drought_proess_monthly_ELI()
         pass
 
     def gen_variables_in_drought_proess_monthly(self):
@@ -1709,10 +1709,11 @@ class Over_shoot_drought:
         # self.gen_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly()
         # self.over_shoot_ratio_ELI()
-        self.over_shoot_pfts_koppen_area_ratio_scatter()
+        # self.over_shoot_pfts_koppen_area_ratio_scatter()
         # self.over_shoot_every_5_year_area_ratio()
         # self.rs_rt_vs_overshoot_ELI_matrix()
         # self.rt_vs_overshoot()
+        self.overshoot_rs()
 
         pass
 
@@ -2122,16 +2123,49 @@ class Over_shoot_drought:
         # plt.close()
         plt.show()
 
+    def overshoot_rs(self):
+        dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly/dataframe.df')
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        over_shoot_col = 'over_shoot'
+        over_shoot_list = [0,1]
+        rs_cols = GLobal_var().get_rs_rt_cols()
+        ELI_class_list = global_ELI_class_list
+        # df = df[df['drought_type'] == 'hot-drought']
+        df = df[df['ELI_class'] == 'Energy-Limited']
+        flag = 0
+        for rs_col in rs_cols:
+            # plt.figure()
+            df_eli_over_shoot_1 = df[df[over_shoot_col] == 1]
+            df_eli_over_shoot_0 = df[df[over_shoot_col] == 0]
+            vals_1 = df_eli_over_shoot_1[rs_col].tolist()
+            vals_0 = df_eli_over_shoot_0[rs_col].tolist()
+            vals_1 = np.array(vals_1)
+            vals_0 = np.array(vals_0)
+            vals_1_ratio = len(vals_1[vals_1 < (1 - global_threshold)]) / len(vals_1) * 100
+            vals_0_ratio = len(vals_0[vals_0 < (1 - global_threshold)]) / len(vals_0) * 100
+            plt.bar(0+flag*2, vals_1_ratio,color='r')
+            plt.bar(1+flag*2, vals_0_ratio,color='gray')
+            flag += 1
+        plt.show()
+
+    def overshoot_test(self):
+        # 1 decline faster
+        # 2 sensitivity
+        # 3 following decline more
+
+        pass
+
 
 def main():
     # Dataframe().run()
     # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
-    Rt_Rs_change_overtime().run()
+    # Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    # Over_shoot_drought().run()
+    Over_shoot_drought().run()
     pass
 
 
