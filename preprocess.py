@@ -1483,6 +1483,41 @@ class GLEAM_SMRoot:
         T.save_npy(spatial_dict_detrend,outf)
         pass
 
+
+class GLEAM_daily:
+
+    def __init__(self):
+        self.datadir = data_root + 'GLEAM_daily/'
+        self.variable_list = ['Et','SMroot','SMsurf']
+        pass
+
+    def run(self):
+        self.nc_to_tif()
+        pass
+
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        params_list = []
+        for year in T.listdir(fdir):
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for variable in self.variable_list:
+                outdir_ii = join(outdir_i,variable)
+                T.mk_dir(outdir_ii)
+                f = f'{variable}_{year}_GLEAM_v3.6a.nc'
+                fpath = join(fdir,year,f)
+                params = [fpath,variable,outdir_ii]
+                params_list.append(params)
+        MULTIPROCESS(self.kernel_nc_to_tif,params_list).run()
+        # T.nc_to_tif(fpath,variable,outdir_i)
+
+    def kernel_nc_to_tif(self,params):
+        fpath, variable, outdir_i = params
+        T.nc_to_tif(fpath, variable, outdir_i)
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -1501,7 +1536,8 @@ def main():
     # ERA().run()
     # SPI().run()
     # GLEAM_ET().run()
-    GLEAM_SMRoot().run()
+    # GLEAM_SMRoot().run()
+    GLEAM_daily().run()
 
     pass
 
