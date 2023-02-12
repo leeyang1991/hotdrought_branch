@@ -1492,7 +1492,11 @@ class GLEAM_daily:
         pass
 
     def run(self):
-        self.nc_to_tif()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.drop_nan()
+        # self.split_month()
+        self.per_pix()
         pass
 
 
@@ -1511,12 +1515,104 @@ class GLEAM_daily:
                 fpath = join(fdir,year,f)
                 params = [fpath,variable,outdir_ii]
                 params_list.append(params)
-        MULTIPROCESS(self.kernel_nc_to_tif,params_list).run()
+        MULTIPROCESS(self.kernel_nc_to_tif,params_list).run(process=7)
         # T.nc_to_tif(fpath,variable,outdir_i)
 
     def kernel_nc_to_tif(self,params):
         fpath, variable, outdir_i = params
-        T.nc_to_tif(fpath, variable, outdir_i)
+        try:
+            T.nc_to_tif(fpath, variable, outdir_i)
+        except Exception as e:
+            print('ERROR')
+            print(e)
+            print('ERROR')
+            print(fpath)
+
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05_deg')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for variable in T.listdir(fdir_i):
+                fdir_ii = join(fdir_i,variable)
+                outdir_ii = join(outdir_i,variable)
+                T.mk_dir(outdir_ii)
+                for f in tqdm(T.listdir(fdir_ii),desc=f'{year} {variable}'):
+                    fpath = join(fdir_ii,f)
+                    outpath = join(outdir_ii,f)
+                    ToRaster().resample_reproj(fpath,outpath,res=0.5)
+        pass
+
+
+    def drop_nan(self):
+        fdir = join(self.datadir,'tif_05_deg')
+        outdir = join(self.datadir,'tif_05_deg_drop_nan')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for variable in T.listdir(fdir_i):
+                fdir_ii = join(fdir_i,variable)
+                outdir_ii = join(outdir_i,variable)
+                T.mk_dir(outdir_ii)
+                for f in tqdm(T.listdir(fdir_ii),desc=f'{year} {variable}'):
+                    fpath = join(fdir_ii,f)
+                    if not f.endswith('.tif'):
+                        continue
+                    outpath = join(outdir_ii,f)
+                    arr,originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+                    arr[arr<=0] = np.nan
+                    ToRaster().array2raster(outpath,originX, originY, pixelWidth, pixelHeight,arr)
+
+    def split_month(self):
+        fdir = join(self.datadir,'tif_05_deg_drop_nan')
+        outdir = join(self.datadir,'tif_05_deg_drop_nan_month')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for variable in T.listdir(fdir_i):
+                fdir_ii = join(fdir_i,variable)
+                outdir_ii = join(outdir_i,variable)
+                T.mk_dir(outdir_ii)
+                mon_fpath_dict = {}
+                for f in T.listdir(fdir_ii):
+                    fpath = join(fdir_ii,f)
+                    mon = f[4:6]
+                    if mon not in mon_fpath_dict:
+                        mon_fpath_dict[mon] = []
+                    mon_fpath_dict[mon].append(fpath)
+                for mon in tqdm(mon_fpath_dict,desc=f'{year} {variable}'):
+                    outdir_iii = join(outdir_ii,mon)
+                    T.mk_dir(outdir_iii)
+                    for fpath in mon_fpath_dict[mon]:
+                        shutil.move(fpath,outdir_iii)
+        pass
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_05_deg_drop_nan_month')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for variable in T.listdir(fdir_i):
+                fdir_ii = join(fdir_i,variable)
+                outdir_ii = join(outdir_i,variable)
+                T.mk_dir(outdir_ii)
+                for mon in T.listdir(fdir_ii):
+                    fdir_iii = join(fdir_ii,mon)
+                    outdir_iii = join(outdir_ii,mon)
+                    T.mk_dir(outdir_iii)
+                    Pre_Process().data_transform(fdir_iii,outdir_iii,n=100000)
+        pass
 
 class ERA_daily_Tair:
     def __init__(self):
@@ -1526,6 +1622,7 @@ class ERA_daily_Tair:
     def run(self):
         # self.nc_to_tif()
         # self.resample()
+        self.split_month()
         # self.per_pix()
         pass
 
@@ -1533,7 +1630,7 @@ class ERA_daily_Tair:
         fdir = join(self.datadir,'nc')
         outdir = join(self.datadir,'tif')
         T.mk_dir(outdir)
-        for f in T.listdir(fdir):
+        for f in tqdm(T.listdir(fdir)):
             fpath = join(fdir,f)
             T.nc_to_tif(fpath,'t2m',outdir)
             self.__move_file(outdir)
@@ -1566,6 +1663,29 @@ class ERA_daily_Tair:
                 outpath = join(outdir_i,f)
                 ToRaster().resample_reproj(fpath,outpath,res=0.5)
 
+    def split_month(self):
+        fdir = join(self.datadir,'tif_every_year_05_deg')
+        outdir = join(self.datadir,'tif_every_year_05_deg_month')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            mon_fpath_dict = {}
+            for f in T.listdir(fdir_i):
+                fpath = join(fdir_i,f)
+                mon = f[4:6]
+                if mon not in mon_fpath_dict:
+                    mon_fpath_dict[mon] = []
+                mon_fpath_dict[mon].append(fpath)
+            for mon in mon_fpath_dict:
+                outdir_ii = join(outdir_i,mon)
+                T.mk_dir(outdir_ii)
+                for fpath in mon_fpath_dict[mon]:
+                    shutil.move(fpath,outdir_ii)
+        pass
+
+
     def per_pix(self):
         fdir = join(self.datadir,'tif_every_year_05_deg')
         outdir = join(self.datadir,'perpix')
@@ -1596,8 +1716,8 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    # GLEAM_daily().run()
-    ERA_daily_Tair().run()
+    GLEAM_daily().run()
+    # ERA_daily_Tair().run()
 
     pass
 
