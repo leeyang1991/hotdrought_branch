@@ -1518,6 +1518,65 @@ class GLEAM_daily:
         fpath, variable, outdir_i = params
         T.nc_to_tif(fpath, variable, outdir_i)
 
+class ERA_daily_Tair:
+    def __init__(self):
+        self.datadir = data_root + 'ERA_daily_Tair/'
+        pass
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.resample()
+        # self.per_pix()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            T.nc_to_tif(fpath,'t2m',outdir)
+            self.__move_file(outdir)
+            # exit()
+
+    def __move_file(self,fdir):
+        outdir = join(self.datadir,'tif_every_year')
+        T.mk_dir(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            date = f.split('.')[0]
+            year = date[:4]
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            fpath = join(fdir,f)
+            outpath = join(outdir_i,f)
+            shutil.move(fpath,outpath)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif_every_year')
+        outdir = join(self.datadir,'tif_every_year_05_deg')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            fdir_i = join(fdir,year)
+            for f in tqdm(T.listdir(fdir_i),desc=year):
+                fpath = join(fdir_i,f)
+                outpath = join(outdir_i,f)
+                ToRaster().resample_reproj(fpath,outpath,res=0.5)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_every_year_05_deg')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            fdir_i = join(fdir,year)
+            Pre_Process().data_transform(fdir_i,outdir_i)
+
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -1537,7 +1596,8 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    GLEAM_daily().run()
+    # GLEAM_daily().run()
+    ERA_daily_Tair().run()
 
     pass
 
