@@ -176,6 +176,62 @@ class Water_energy_limited_area:
 
 
 
+class Water_energy_limited_area_daily:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Water_energy_limited_area_daily',
+                                                                                       result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        self.ELI()
+
+        pass
+
+    def load_data(self,year,mon):
+        year = int(year)
+        year = str(year)
+        mon = int(mon)
+        mon = f'{mon:02d}'
+
+        ET_path = join(data_root,'GLEAM_daily','perpix',year,'Et',mon)
+        SMsurf_path = join(data_root,'GLEAM_daily','perpix',year,'SMsurf',mon)
+        SMroot_path = join(data_root,'GLEAM_daily','perpix',year,'SMroot',mon)
+        T_path = join(data_root,'ERA_daily_Tair','perpix',year,mon)
+
+        ET_dict = T.load_npy_dir(ET_path)
+        SMsurf_dict = T.load_npy_dir(SMsurf_path)
+        SMroot_dict = T.load_npy_dir(SMroot_path)
+        T_dict = T.load_npy_dir(T_path)
+        return ET_dict,SMsurf_dict,SMroot_dict,T_dict
+
+    def ELI(self):
+        outdir = join(self.this_class_tif,'ELI')
+        T.mk_dir(outdir)
+        year_list = list(range(global_start_year,global_end_year+1))
+        mon_list = list(range(1,13))
+        for year in tqdm(year_list):
+            for mon in mon_list:
+                outf = join(outdir,f'{year}{mon:02d}.tif')
+                ET_dict, SMsurf_dict, SMroot_dict, T_dict = self.load_data(year,mon)
+                spatial_dict = {}
+                for pix in ET_dict:
+                    r,c = pix
+                    if r > 180:
+                        continue
+                    if not pix in SMsurf_dict or not pix in SMroot_dict or not pix in T_dict:
+                        continue
+                    ET = ET_dict[pix]
+                    SMsurf = SMsurf_dict[pix]
+                    # SMroot = SMroot_dict[pix]
+                    Temp = T_dict[pix]
+                    if T.is_all_nan(ET):
+                        continue
+                    ET_sm_corr,_ = T.nan_correlation(ET,SMsurf)
+                    ET_Temp_corr,_ = T.nan_correlation(ET,Temp)
+                    ELI = ET_sm_corr - ET_Temp_corr
+                    spatial_dict[pix] = ELI
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                DIC_and_TIF().arr_to_tif(arr,outf)
 
 class Growing_season:
     def __init__(self):
@@ -1569,11 +1625,12 @@ def gen_world_grid_shp():
 
 def main():
     # Water_energy_limited_area().run()
+    Water_energy_limited_area_daily().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
-    Resistance_Resilience().run()
+    # Resistance_Resilience().run()
 
     # gen_world_grid_shp()
     pass
