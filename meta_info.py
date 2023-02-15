@@ -134,6 +134,14 @@ class Meta_information:
                 'path': join(data_root, f'GOME2_SIF/detrend/{year_range}'),
                 'path_type': 'dir',
             },
+            'monthly-ELI': {
+                'path': join(results_root,'analysis/Water_energy_limited_area_daily/arr/ELI/perpix',year_range),
+                'path_type': 'dir',
+            },
+            'monthly-ELI-anomaly': {
+                'path': join(results_root, 'analysis/Water_energy_limited_area_daily/arr/ELI/anomaly', year_range),
+                'path_type': 'dir',
+            },
         }
         return vars_info_dic
 

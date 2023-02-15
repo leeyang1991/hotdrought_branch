@@ -1622,8 +1622,8 @@ class ERA_daily_Tair:
     def run(self):
         # self.nc_to_tif()
         # self.resample()
-        self.split_month()
-        # self.per_pix()
+        # self.split_month()
+        self.per_pix()
         pass
 
     def nc_to_tif(self):
@@ -1687,15 +1687,18 @@ class ERA_daily_Tair:
 
 
     def per_pix(self):
-        fdir = join(self.datadir,'tif_every_year_05_deg')
+        fdir = join(self.datadir,'tif_every_year_05_deg_month')
         outdir = join(self.datadir,'perpix')
         T.mk_dir(outdir)
         for year in T.listdir(fdir):
             outdir_i = join(outdir,year)
             T.mk_dir(outdir_i)
             fdir_i = join(fdir,year)
-            Pre_Process().data_transform(fdir_i,outdir_i)
-
+            for mon in tqdm(T.listdir(fdir_i),desc=year):
+                fdir_ii = join(fdir_i,mon)
+                outdir_ii = join(outdir_i,mon)
+                T.mk_dir(outdir_ii)
+                Pre_Process().data_transform(fdir_ii,outdir_ii,n=100000)
 
 def main():
     # GIMMS_NDVI().run()
@@ -1716,8 +1719,8 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    GLEAM_daily().run()
-    # ERA_daily_Tair().run()
+    # GLEAM_daily().run()
+    ERA_daily_Tair().run()
 
     pass
 

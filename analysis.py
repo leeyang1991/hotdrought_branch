@@ -183,7 +183,9 @@ class Water_energy_limited_area_daily:
         pass
 
     def run(self):
-        self.ELI()
+        # self.ELI()
+        # self.ELI_perpix()
+        self.anomaly()
 
         pass
 
@@ -232,6 +234,23 @@ class Water_energy_limited_area_daily:
                     spatial_dict[pix] = ELI
                 arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
                 DIC_and_TIF().arr_to_tif(arr,outf)
+
+
+    def ELI_perpix(self):
+        fdir = join(self.this_class_tif,'ELI')
+        outdir = join(self.this_class_arr,'ELI','perpix','1982-2015')
+        T.mk_dir(outdir,force=1)
+        Pre_Process().data_transform(fdir,outdir)
+
+        pass
+
+    def anomaly(self):
+        fdir = join(self.this_class_arr,'ELI','perpix','1982-2015')
+        outdir = join(self.this_class_arr,'ELI','anomaly','1982-2015')
+        T.mk_dir(outdir,force=1)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+        pass
 
 class Growing_season:
     def __init__(self):
